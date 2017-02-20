@@ -47,11 +47,11 @@ package log4go
 
 import (
 	"errors"
-	"os"
 	"fmt"
-	"time"
-	"strings"
+	"os"
 	"runtime"
+	"strings"
+	"time"
 )
 
 // Version information
@@ -75,12 +75,12 @@ const (
 	INFO
 	WARNING
 	ERROR
-	CRITICAL
+	FATAL
 )
 
 // Logging level strings
 var (
-	levelStrings = [...]string{"FNST", "FINE", "DEBG", "TRAC", "INFO", "WARN", "EROR", "CRIT"}
+	levelStrings = [...]string{"fnst", "fine", "debug", "trace", "info", "warning", "error", "fatal"}
 )
 
 func (l level) String() string {
@@ -463,9 +463,9 @@ func (log Logger) Error(arg0 interface{}, args ...interface{}) error {
 // Critical logs a message at the critical log level and returns the formatted error,
 // See Warn for an explanation of the performance and Debug for an explanation
 // of the parameters.
-func (log Logger) Critical(arg0 interface{}, args ...interface{}) error {
+func (log Logger) FATAL(arg0 interface{}, args ...interface{}) error {
 	const (
-		lvl = CRITICAL
+		lvl = FATAL
 	)
 	var msg string
 	switch first := arg0.(type) {

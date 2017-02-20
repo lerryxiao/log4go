@@ -1,12 +1,5 @@
-Please see http://log4go.googlecode.com/
+# 修改 log4go 项目
+    fork kylelemons/log4go
+# 修改了log 级别的定义。
+    fnst", "fine", "debug", "trace", "info", "warning", "error", "fatal"
 
-Installation:
-- Run `goinstall log4go.googlecode.com/hg`
-
-Usage:
-- Add the following import:
-import l4g "log4go.googlecode.com/hg"
-
-Acknowledgements:
-- pomack
-  For providing awesome patches to bring log4go up to the latest Go spec

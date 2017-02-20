@@ -3,9 +3,10 @@
 package log4go
 
 import (
-	"fmt"
 	"bytes"
+	"fmt"
 	"io"
+	"os"
 )
 
 const (
@@ -15,9 +16,10 @@ const (
 )
 
 type formatCacheType struct {
-	LastUpdateSeconds    int64
-	shortTime, shortDate string
-	longTime, longDate   string
+	LastUpdateSeconds     int64
+	shortTime, shortDate  string
+	longTime, longDate    string
+	runnableID, processID string
 }
 
 var formatCache = &formatCacheType{}
@@ -25,13 +27,16 @@ var formatCache = &formatCacheType{}
 // Known format codes:
 // %T - Time (15:04:05 MST)
 // %t - Time (15:04)
-// %D - Date (2006/01/02)
+// %D - Date (2006-01-02)
 // %d - Date (01/02/06)
 // %L - Level (FNST, FINE, DEBG, TRAC, WARN, EROR, CRIT)
 // %S - Source
 // %M - Message
 // Ignores unknown formats
 // Recommended: "[%D %T] [%L] (%S) %M"
+// add by format by lerry 2015-06-30
+// %P - PROCESS ID
+// %R - thread ID
 func FormatLogRecord(format string, rec *LogRecord) string {
 	if rec == nil {
 		return "<nil>"
@@ -47,13 +52,16 @@ func FormatLogRecord(format string, rec *LogRecord) string {
 	if cache.LastUpdateSeconds != secs {
 		month, day, year := rec.Created.Month(), rec.Created.Day(), rec.Created.Year()
 		hour, minute, second := rec.Created.Hour(), rec.Created.Minute(), rec.Created.Second()
-		zone, _ := rec.Created.Zone()
+		//zone, _ := rec.Created.Zone()
+		millis := rec.Created.UnixNano()/1000000 - (secs * 1000)
 		updated := &formatCacheType{
 			LastUpdateSeconds: secs,
 			shortTime:         fmt.Sprintf("%02d:%02d", hour, minute),
 			shortDate:         fmt.Sprintf("%02d/%02d/%02d", month, day, year%100),
-			longTime:          fmt.Sprintf("%02d:%02d:%02d %s", hour, minute, second, zone),
-			longDate:          fmt.Sprintf("%04d/%02d/%02d", year, month, day),
+			longTime:          fmt.Sprintf("%02d:%02d:%02d:%03d", hour, minute, second, millis),
+			longDate:          fmt.Sprintf("%04d-%02d-%02d", year, month, day),
+			runnableID:        fmt.Sprintf("%d", 0),
+			processID:         fmt.Sprintf("%d", os.Getpid()),
 		}
 		cache = *updated
 		formatCache = updated
@@ -80,6 +88,11 @@ func FormatLogRecord(format string, rec *LogRecord) string {
 				out.WriteString(rec.Source)
 			case 'M':
 				out.WriteString(rec.Message)
+			//add by lerry suport processID and threadID ,but threadID is 0
+			case 'P':
+				out.WriteString(cache.processID)
+			case 'R':
+				out.WriteString(cache.runnableID)
 			}
 			if len(piece) > 1 {
 				out.Write(piece[1:])

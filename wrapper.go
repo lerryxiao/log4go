@@ -4,8 +4,8 @@ package log4go
 
 import (
 	"errors"
-	"os"
 	"fmt"
+	"os"
 	"strings"
 )
 
@@ -34,14 +34,14 @@ func Close() {
 
 func Crash(args ...interface{}) {
 	if len(args) > 0 {
-		Global.intLogf(CRITICAL, strings.Repeat(" %v", len(args))[1:], args...)
+		Global.intLogf(FATAL, strings.Repeat(" %v", len(args))[1:], args...)
 	}
 	panic(args)
 }
 
 // Logs the given message and crashes the program
 func Crashf(format string, args ...interface{}) {
-	Global.intLogf(CRITICAL, format, args...)
+	Global.intLogf(FATAL, format, args...)
 	Global.Close() // so that hopefully the messages get logged
 	panic(fmt.Sprintf(format, args...))
 }
@@ -257,7 +257,7 @@ func Error(arg0 interface{}, args ...interface{}) error {
 // Wrapper for (*Logger).Critical
 func Critical(arg0 interface{}, args ...interface{}) error {
 	const (
-		lvl = CRITICAL
+		lvl = FATAL
 	)
 	switch first := arg0.(type) {
 	case string:

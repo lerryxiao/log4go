@@ -91,8 +91,8 @@ func (log Logger) LoadConfiguration(filename string) {
 			lvl = WARNING
 		case "ERROR":
 			lvl = ERROR
-		case "CRITICAL":
-			lvl = CRITICAL
+		case "FATAL":
+			lvl = FATAL
 		default:
 			fmt.Fprintf(os.Stderr, "LoadConfiguration: Error: Required child <%s> for filter has unknown value in %s: %s\n", "level", filename, xmlfilt.Level)
 			bad = true
@@ -167,6 +167,7 @@ func strToNumSuffix(str string, mult int) int {
 	parsed, _ := strconv.Atoi(str)
 	return parsed * num
 }
+
 func xmlToFileLogWriter(filename string, props []xmlProperty, enabled bool) (*FileLogWriter, bool) {
 	file := ""
 	format := "[%D %T] [%L] (%S) %M"
@@ -174,6 +175,7 @@ func xmlToFileLogWriter(filename string, props []xmlProperty, enabled bool) (*Fi
 	maxsize := 0
 	daily := false
 	rotate := false
+	dir := ""
 
 	// Parse properties
 	for _, prop := range props {
@@ -188,6 +190,11 @@ func xmlToFileLogWriter(filename string, props []xmlProperty, enabled bool) (*Fi
 			maxsize = strToNumSuffix(strings.Trim(prop.Value, " \r\n"), 1024)
 		case "daily":
 			daily = strings.Trim(prop.Value, " \r\n") != "false"
+		case "dir":
+			dir = strings.Trim(prop.Value, " \r\n")
+			if !strings.HasSuffix(dir, "/") {
+				dir += "/"
+			}
 		case "rotate":
 			rotate = strings.Trim(prop.Value, " \r\n") != "false"
 		default:
@@ -206,7 +213,7 @@ func xmlToFileLogWriter(filename string, props []xmlProperty, enabled bool) (*Fi
 		return nil, true
 	}
 
-	flw := NewFileLogWriter(file, rotate)
+	flw := NewFileLogWriter(dir, file, rotate)
 	flw.SetFormat(format)
 	flw.SetRotateLines(maxlines)
 	flw.SetRotateSize(maxsize)
@@ -220,6 +227,7 @@ func xmlToXMLLogWriter(filename string, props []xmlProperty, enabled bool) (*Fil
 	maxsize := 0
 	daily := false
 	rotate := false
+	dir := ""
 
 	// Parse properties
 	for _, prop := range props {
@@ -232,6 +240,11 @@ func xmlToXMLLogWriter(filename string, props []xmlProperty, enabled bool) (*Fil
 			maxsize = strToNumSuffix(strings.Trim(prop.Value, " \r\n"), 1024)
 		case "daily":
 			daily = strings.Trim(prop.Value, " \r\n") != "false"
+		case "dir":
+			dir = strings.Trim(prop.Value, " \r\n")
+			if !strings.HasSuffix(dir, "/") {
+				dir += "/"
+			}
 		case "rotate":
 			rotate = strings.Trim(prop.Value, " \r\n") != "false"
 		default:
@@ -250,7 +263,7 @@ func xmlToXMLLogWriter(filename string, props []xmlProperty, enabled bool) (*Fil
 		return nil, true
 	}
 
-	xlw := NewXMLLogWriter(file, rotate)
+	xlw := NewXMLLogWriter(dir, file, rotate)
 	xlw.SetRotateLines(maxrecords)
 	xlw.SetRotateSize(maxsize)
 	xlw.SetRotateDaily(daily)
@@ -286,3 +299,5 @@ func xmlToSocketLogWriter(filename string, props []xmlProperty, enabled bool) (S
 
 	return NewSocketLogWriter(protocol, endpoint), true
 }
+
+

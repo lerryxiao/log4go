@@ -3,19 +3,24 @@
 package log4go
 
 import (
-	"os"
+	"bytes"
 	"fmt"
+	"os"
 	"time"
+	"strings"
 )
 
 // This log writer sends output to a file
+//dir a
 type FileLogWriter struct {
 	rec chan *LogRecord
 	rot chan bool
 
 	// The opened file
-	filename string
-	file     *os.File
+	dir            string
+	filename       string
+	filenameFormat string
+	file           *os.File
 
 	// The logging format
 	format string
@@ -57,13 +62,27 @@ func (w *FileLogWriter) Close() {
 //
 // The standard log-line format is:
 //   [%D %T] [%L] (%S) %M
-func NewFileLogWriter(fname string, rotate bool) *FileLogWriter {
+func NewFileLogWriter(dir, fname string, rotate bool) *FileLogWriter {
 	w := &FileLogWriter{
-		rec:      make(chan *LogRecord, LogBufferLength),
-		rot:      make(chan bool),
-		filename: fname,
-		format:   "[%D %T] [%L] (%S) %M",
-		rotate:   rotate,
+		rec:            make(chan *LogRecord, LogBufferLength),
+		rot:            make(chan bool),
+		dir:            dir,
+		filename:       fname,
+		filenameFormat: fname,
+		format:         "[%D %T] [%L] (%S) %M",
+		rotate:         rotate,
+	}
+	//check dir is exist,
+	if len(strings.TrimSpace(dir)) > 0 {
+		_, err := os.Stat(dir)
+		if err != nil {
+			err = os.MkdirAll(dir, 0755)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "FilleLogWriter(%q): %s ", dir, err)
+				return nil
+			}
+		}
+
 	}
 
 	// open the file for the first time
@@ -130,36 +149,50 @@ func (w *FileLogWriter) intRotate() error {
 		fmt.Fprint(w.file, FormatLogRecord(w.trailer, &LogRecord{Created: time.Now()}))
 		w.file.Close()
 	}
-
+	pieces := bytes.Split([]byte(w.filenameFormat), []byte{'%'})
+	out := bytes.NewBuffer(make([]byte, 0, 64))
+	for _, p := range pieces {
+		if p[0] == 'D' {
+			out.WriteString(time.Now().Format("2006-01-02"))
+			if len(p) > 1 {
+				out.Write(p[1:])
+			}
+		} else {
+			out.Write(p)
+		}
+	}
+	w.filename = out.String()
 	// If we are keeping log files, move it to the next available number
 	if w.rotate {
-		_, err := os.Lstat(w.filename)
+		_, err := os.Lstat(w.dir + w.filename)
 		if err == nil { // file exists
 			// Find the next available number
 			num := 1
 			fname := ""
 			for ; err == nil && num <= 999; num++ {
 				fname = w.filename + fmt.Sprintf(".%03d", num)
-				_, err = os.Lstat(fname)
+				_, err = os.Lstat(w.dir + fname)
 			}
 			// return error if the last file checked still existed
 			if err == nil {
-				return fmt.Errorf("Rotate: Cannot find free log number to rename %s\n", w.filename)
+				return fmt.Errorf("Rotate: Cannot find free log number to rename %s%s\n", w.dir, w.filename)
 			}
 
 			// Rename the file to its newfound home
-			err = os.Rename(w.filename, fname)
+			err = os.Rename(w.dir+w.filename, w.dir+fname)
 			if err != nil {
 				return fmt.Errorf("Rotate: %s\n", err)
 			}
+
 		}
 	}
 
 	// Open the log file
-	fd, err := os.OpenFile(w.filename, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0660)
+	fd, err := os.OpenFile(w.dir+w.filename, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0660)
 	if err != nil {
 		return err
 	}
+
 	w.file = fd
 
 	now := time.Now()
@@ -229,8 +262,8 @@ func (w *FileLogWriter) SetRotate(rotate bool) *FileLogWriter {
 
 // NewXMLLogWriter is a utility method for creating a FileLogWriter set up to
 // output XML record log messages instead of line-based ones.
-func NewXMLLogWriter(fname string, rotate bool) *FileLogWriter {
-	return NewFileLogWriter(fname, rotate).SetFormat(
+func NewXMLLogWriter(dir, fname string, rotate bool) *FileLogWriter {
+	return NewFileLogWriter(dir, fname, rotate).SetFormat(
 		`	<record level="%L">
 		<timestamp>%D %T</timestamp>
 		<source>%S</source>
