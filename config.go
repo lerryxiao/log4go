@@ -131,7 +131,7 @@ func (log Logger) LoadConfiguration(filename string) {
 	}
 }
 
-func xmlToConsoleLogWriter(filename string, props []xmlProperty, enabled bool) (ConsoleLogWriter, bool) {
+func xmlToConsoleLogWriter(filename string, props []xmlProperty, enabled bool) (*ConsoleLogWriter, bool) {
 	// Parse properties
 	for _, prop := range props {
 		switch prop.Name {
@@ -270,7 +270,7 @@ func xmlToXMLLogWriter(filename string, props []xmlProperty, enabled bool) (*Fil
 	return xlw, true
 }
 
-func xmlToSocketLogWriter(filename string, props []xmlProperty, enabled bool) (SocketLogWriter, bool) {
+func xmlToSocketLogWriter(filename string, props []xmlProperty, enabled bool) (*SocketLogWriter, bool) {
 	endpoint := ""
 	protocol := "udp"
 
@@ -299,5 +299,3 @@ func xmlToSocketLogWriter(filename string, props []xmlProperty, enabled bool) (S
 
 	return NewSocketLogWriter(protocol, endpoint), true
 }
-
-

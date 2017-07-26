@@ -56,9 +56,9 @@ var formatTests = []struct {
 		},
 		Formats: map[string]string{
 			// TODO(kevlar): How can I do this so it'll work outside of PST?
-			FORMAT_DEFAULT: "[2009/02/13 23:31:30 UTC] [EROR] (source) message\n",
-			FORMAT_SHORT:   "[23:31 02/13/09] [EROR] message\n",
-			FORMAT_ABBREV:  "[EROR] message\n",
+			FORMAT_DEFAULT: "[2009-02-13 23:31:30:123] [error] (source) message\n",
+			FORMAT_SHORT:   "[23:31 02/13/09] [error] message\n",
+			FORMAT_ABBREV:  "[error] message\n",
 		},
 	},
 }
@@ -89,12 +89,15 @@ var logRecordWriteTests = []struct {
 			Message: "message",
 			Created: now,
 		},
-		Console: "[02/13/09 23:31:30] [CRIT] message\n",
+		Console: "[02/13/09 23:31:30] [fatal] message\n",
 	},
 }
 
 func TestConsoleLogWriter(t *testing.T) {
-	console := make(ConsoleLogWriter)
+	console := &ConsoleLogWriter{
+		rec:  make(chan *LogRecord, LogBufferLength),
+		stop: make(chan bool),
+	}
 
 	r, w := io.Pipe()
 	go console.run(w)
@@ -133,9 +136,9 @@ func TestFileLogWriter(t *testing.T) {
 
 	if contents, err := ioutil.ReadFile(testLogFile); err != nil {
 		t.Errorf("read(%q): %s", testLogFile, err)
-	}else if len(contents) != 51 {
+	} else if len(contents) != 51 {
 		t.Errorf("malformed filelog: %q (%d bytes)", string(contents), len(contents))
-	}else{
+	} else {
 		t.Log(string(contents))
 	}
 }
@@ -146,7 +149,7 @@ func TestXMLLogWriter(t *testing.T) {
 	}(LogBufferLength)
 	LogBufferLength = 0
 
-	w := NewXMLLogWriter("log", testLogFile, false)
+	w := NewXMLLogWriter("", testLogFile, false)
 	if w == nil {
 		t.Fatalf("Invalid return: w should not be nil")
 	}
@@ -158,7 +161,7 @@ func TestXMLLogWriter(t *testing.T) {
 
 	if contents, err := ioutil.ReadFile(testLogFile); err != nil {
 		t.Errorf("read(%q): %s", testLogFile, err)
-	} else if len(contents) != 185 {
+	} else if len(contents) != 186 {
 		t.Errorf("malformed xmllog: %q (%d bytes)", string(contents), len(contents))
 	}
 }
@@ -219,7 +222,7 @@ func TestLogger(t *testing.T) {
 
 func TestLogOutput(t *testing.T) {
 	const (
-		expected = "fdf3e51e444da56b4cb400f30bc47424"
+		expected = "75b62c5869969df53ebf7d14b57ced45"
 	)
 
 	// Unbuffered output
@@ -231,7 +234,7 @@ func TestLogOutput(t *testing.T) {
 	l := make(Logger)
 
 	// Delete and open the output log without a timestamp (for a constant md5sum)
-	l.AddFilter("file", FINEST, NewFileLogWriter("log", testLogFile, false).SetFormat("[%L] %M"))
+	l.AddFilter("file", FINEST, NewFileLogWriter("", testLogFile, false).SetFormat("[%L] %M"))
 	defer os.Remove(testLogFile)
 
 	// Send some log messages
@@ -385,7 +388,7 @@ func TestXMLConfig(t *testing.T) {
 	}
 
 	// Make sure they're the right type
-	if _, ok := log["stdout"].LogWriter.(ConsoleLogWriter); !ok {
+	if _, ok := log["stdout"].LogWriter.(*ConsoleLogWriter); !ok {
 		t.Fatalf("XMLConfig: Expected stdout to be ConsoleLogWriter, found %T", log["stdout"].LogWriter)
 	}
 	if _, ok := log["file"].LogWriter.(*FileLogWriter); !ok {

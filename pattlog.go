@@ -107,29 +107,40 @@ func FormatLogRecord(format string, rec *LogRecord) string {
 }
 
 // This is the standard writer that prints to standard output.
-type FormatLogWriter chan *LogRecord
-
-// This creates a new FormatLogWriter
-func NewFormatLogWriter(out io.Writer, format string) FormatLogWriter {
-	records := make(FormatLogWriter, LogBufferLength)
-	go records.run(out, format)
-	return records
+type FormatLogWriter struct {
+	rec  chan *LogRecord
+	stop chan bool
 }
 
-func (w FormatLogWriter) run(out io.Writer, format string) {
-	for rec := range w {
-		fmt.Fprint(out, FormatLogRecord(format, rec))
+// This creates a new FormatLogWriter
+func NewFormatLogWriter(out io.Writer, format string) *FormatLogWriter {
+	w := &FormatLogWriter{
+		rec:  make(chan *LogRecord, LogBufferLength),
+		stop: make(chan bool),
 	}
+
+	go func() {
+		defer func() {
+			w.stop <- true
+		}()
+
+		for rec := range w.rec {
+			fmt.Fprint(out, FormatLogRecord(format, rec))
+		}
+	}()
+
+	return w
 }
 
 // This is the FormatLogWriter's output method.  This will block if the output
 // buffer is full.
-func (w FormatLogWriter) LogWrite(rec *LogRecord) {
-	w <- rec
+func (w *FormatLogWriter) LogWrite(rec *LogRecord) {
+	w.rec <- rec
 }
 
 // Close stops the logger from sending messages to standard output.  Attempts to
 // send log messages to this logger after a Close have undefined behavior.
-func (w FormatLogWriter) Close() {
-	close(w)
+func (w *FormatLogWriter) Close() {
+	close(w.rec)
+	<-w.stop
 }

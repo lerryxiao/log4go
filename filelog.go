@@ -6,15 +6,16 @@ import (
 	"bytes"
 	"fmt"
 	"os"
-	"time"
 	"strings"
+	"time"
 )
 
 // This log writer sends output to a file
 //dir a
 type FileLogWriter struct {
-	rec chan *LogRecord
-	rot chan bool
+	rec  chan *LogRecord
+	rot  chan bool
+	stop chan bool
 
 	// The opened file
 	dir            string
@@ -51,6 +52,7 @@ func (w *FileLogWriter) LogWrite(rec *LogRecord) {
 
 func (w *FileLogWriter) Close() {
 	close(w.rec)
+	<-w.stop
 }
 
 // NewFileLogWriter creates a new LogWriter which writes to the given file and
@@ -66,6 +68,7 @@ func NewFileLogWriter(dir, fname string, rotate bool) *FileLogWriter {
 	w := &FileLogWriter{
 		rec:            make(chan *LogRecord, LogBufferLength),
 		rot:            make(chan bool),
+		stop:           make(chan bool),
 		dir:            dir,
 		filename:       fname,
 		filenameFormat: fname,
@@ -97,6 +100,7 @@ func NewFileLogWriter(dir, fname string, rotate bool) *FileLogWriter {
 				fmt.Fprint(w.file, FormatLogRecord(w.trailer, &LogRecord{Created: time.Now()}))
 				w.file.Close()
 			}
+			w.stop <- true
 		}()
 
 		for {
@@ -104,7 +108,7 @@ func NewFileLogWriter(dir, fname string, rotate bool) *FileLogWriter {
 			case <-w.rot:
 				if err := w.intRotate(); err != nil {
 					fmt.Fprintf(os.Stderr, "FileLogWriter(%q): %s\n", w.filename, err)
-					return
+					continue
 				}
 			case rec, ok := <-w.rec:
 				if !ok {
@@ -116,7 +120,7 @@ func NewFileLogWriter(dir, fname string, rotate bool) *FileLogWriter {
 					(w.daily && now.Day() != w.daily_opendate) {
 					if err := w.intRotate(); err != nil {
 						fmt.Fprintf(os.Stderr, "FileLogWriter(%q): %s\n", w.filename, err)
-						return
+						continue
 					}
 				}
 
@@ -124,7 +128,7 @@ func NewFileLogWriter(dir, fname string, rotate bool) *FileLogWriter {
 				n, err := fmt.Fprint(w.file, FormatLogRecord(w.format, rec))
 				if err != nil {
 					fmt.Fprintf(os.Stderr, "FileLogWriter(%q): %s\n", w.filename, err)
-					return
+					continue
 				}
 
 				// Update the counts
