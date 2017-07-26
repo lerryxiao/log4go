@@ -1,5 +1,5 @@
 # 修改 log4go 项目
     fork kylelemons/log4go
-# 修改了log 级别的定义。
+# 修改了log 级别的定义
     fnst", "fine", "debug", "trace", "info", "warning", "error", "fatal"
-
+# 修改了程序退出部分日志遗漏问题
