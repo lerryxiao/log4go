@@ -112,6 +112,8 @@ func (log Logger) LoadConfiguration(filename string) {
 			filt, good = xmlToXMLLogWriter(filename, xmlfilt.Property, enabled)
 		case "socket":
 			filt, good = xmlToSocketLogWriter(filename, xmlfilt.Property, enabled)
+		case "http":
+			filt, good = xmlToHttpLogWriter(filename, xmlfilt.Property, enabled)
 		default:
 			fmt.Fprintf(os.Stderr, "LoadConfiguration: Error: Could not load XML configuration in %s: unknown filter type \"%s\"\n", filename, xmlfilt.Type)
 			os.Exit(1)
@@ -298,4 +300,47 @@ func xmlToSocketLogWriter(filename string, props []xmlProperty, enabled bool) (*
 	}
 
 	return NewSocketLogWriter(protocol, endpoint), true
+}
+
+func xmlToHttpLogWriter(filename string, props []xmlProperty, enabled bool) (*HttpLogWriter, bool) {
+	url := ""
+	headers := make(map[string]string)
+	procnum := 0
+
+	// Parse properties
+	for _, prop := range props {
+		switch prop.Name {
+		case "url":
+			url = strings.Trim(prop.Value, " \r\n")
+		case "header":
+			{
+				strs := strings.Trim(prop.Value, " \r\n")
+				if len(strs) > 0 {
+					for _, tstr := range strings.Split(strs, ",") {
+						ststrs := strings.Split(tstr, ":")
+						if len(ststrs) >= 2 {
+							headers[ststrs[0]] = ststrs[1]
+						}
+					}
+				}
+			}
+		case "procnum":
+			procnum, _ = strconv.Atoi(strings.Trim(prop.Value, " \r\n"))
+		default:
+			fmt.Fprintf(os.Stderr, "LoadConfiguration: Warning: Unknown property \"%s\" for file filter in %s\n", prop.Name, filename)
+		}
+	}
+
+	// Check properties
+	if len(url) == 0 {
+		fmt.Fprintf(os.Stderr, "LoadConfiguration: Error: Required property \"%s\" for file filter missing in %s\n", "url", filename)
+		return nil, false
+	}
+
+	// If it's disabled, we're just checking syntax
+	if !enabled {
+		return nil, true
+	}
+
+	return NewHttpLogWriter(url, headers, procnum), true
 }

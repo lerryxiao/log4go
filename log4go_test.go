@@ -205,7 +205,7 @@ func TestLogger(t *testing.T) {
 	}
 
 	//func (l *Logger) Critical(format string, args ...interface{}) error {}
-	if err := l.FATAL("%s %d %#v", "Critical:", 100, []int64{}); err.Error() != "Critical: 100 []int64{}" {
+	if err := l.Fatal("%s %d %#v", "Critical:", 100, []int64{}); err.Error() != "Critical: 100 []int64{}" {
 		t.Errorf("Critical returned invalid error: %s", err)
 	}
 
@@ -527,13 +527,3 @@ func BenchmarkFileUtilNotLog(b *testing.B) {
 	b.StopTimer()
 	os.Remove("benchlog.log")
 }
-
-// Benchmark results (darwin amd64 6g)
-//elog.BenchmarkConsoleLog           100000       22819 ns/op
-//elog.BenchmarkConsoleNotLogged    2000000         879 ns/op
-//elog.BenchmarkConsoleUtilLog        50000       34380 ns/op
-//elog.BenchmarkConsoleUtilNotLog   1000000        1339 ns/op
-//elog.BenchmarkFileLog              100000       26497 ns/op
-//elog.BenchmarkFileNotLogged       2000000         821 ns/op
-//elog.BenchmarkFileUtilLog           50000       33945 ns/op
-//elog.BenchmarkFileUtilNotLog      1000000        1258 ns/op
