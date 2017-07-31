@@ -44,4 +44,13 @@
     <property name="endpoint">192.168.1.255:12124</property> <!-- recommend UDP broadcast -->
     <property name="protocol">udp</property> <!-- tcp or udp -->
   </filter>
+  <filter enabled="false">
+    <tag>reportlog</tag>
+    <type>file</type>
+    <level>REPORT</level>
+    <property name="filename">report.log.%D</property>
+    <property name="url">http://127.0.0.1:8080/report</property>
+    <property name="header">appKey:IsD3UJ4Xgl;from:sdk;requestID:xxxadfasefafa</property> <!-- http report keys -->
+    <property name="procnum">2</property> <!-- run proc number -->
+</filter>
 </logging>

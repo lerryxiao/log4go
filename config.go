@@ -93,6 +93,8 @@ func (log Logger) LoadConfiguration(filename string) {
 			lvl = ERROR
 		case "FATAL":
 			lvl = FATAL
+		case "REPORT":
+			lvl = REPORT
 		default:
 			fmt.Fprintf(os.Stderr, "LoadConfiguration: Error: Required child <%s> for filter has unknown value in %s: %s\n", "level", filename, xmlfilt.Level)
 			bad = true
@@ -316,7 +318,7 @@ func xmlToHttpLogWriter(filename string, props []xmlProperty, enabled bool) (*Ht
 			{
 				strs := strings.Trim(prop.Value, " \r\n")
 				if len(strs) > 0 {
-					for _, tstr := range strings.Split(strs, ",") {
+					for _, tstr := range strings.Split(strs, ";") {
 						ststrs := strings.Split(tstr, ":")
 						if len(ststrs) >= 2 {
 							headers[ststrs[0]] = ststrs[1]
