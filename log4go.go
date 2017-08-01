@@ -97,6 +97,11 @@ var (
 	LogBufferLength = 32
 )
 
+const (
+	EX_NONE int8 = iota
+	EX_REPORT
+)
+
 /****** LogRecord ******/
 
 // A LogRecord contains all of the pertinent information for each message
@@ -105,6 +110,7 @@ type LogRecord struct {
 	Created time.Time // The time at which the log message was created (nanoseconds)
 	Source  string    // The message source
 	Message string    // The log message
+	Extend  []interface{}
 }
 
 /****** LogWriter ******/
@@ -283,6 +289,25 @@ func (log Logger) Logc(lvl level, closure func() string) {
 	log.intLogc(lvl, closure)
 }
 
+func (log Logger) LogReport(lvl level, url, header, body interface{}) {
+	// check skip
+	if log.checkSkip(lvl) == true {
+		return
+	}
+
+	// dispatch log
+	log.dispatchLog(&LogRecord{
+		Level:   lvl,
+		Created: time.Now(),
+		Extend: []interface{}{
+			EX_REPORT,
+			url,
+			header,
+			body,
+		},
+	})
+}
+
 // comm func
 // nerr means whether need return error
 // level means log level
@@ -372,4 +397,9 @@ func (log Logger) Fatal(arg0 interface{}, args ...interface{}) error {
 // Report logs
 func (log Logger) Report(arg0 interface{}, args ...interface{}) {
 	log.LogCmm(false, REPORT, arg0, args...)
+}
+
+// Report Log by url
+func (log Logger) ReportAPI(url string, header, body interface{}) {
+	log.LogReport(REPORT, url, header, body)
 }

@@ -7,29 +7,45 @@ import (
 	"math/rand"
 	"net/http"
 	"os"
+	"reflect"
 	"time"
 )
 
 //Requst logger struct
 type RequestLogger struct {
-	Headers  *map[string]string `json:"headers"`
-	Body     string             `json:"body"`
+	body     string
 	datetime string
+	url      string
+	header   string
 }
 
 func (logger *RequestLogger) transRequest(writer *HttpLogWriter) (*http.Request, error) {
 	if writer != nil {
-		writer.headers["datetime"] = logger.datetime
-		logger.Headers = &writer.headers
-		data, err := json.Marshal(logger)
+		header := ""
+		if len(logger.header) <= 0 {
+			writer.headers["datetime"] = logger.datetime
+			data, err := json.Marshal(writer.headers)
+			if err != nil {
+				return nil, err
+			}
+			header = string(data)
+		} else {
+			header = logger.header
+		}
+		data, err := json.Marshal(map[string]string{
+			"headers": header,
+			"body":    logger.body,
+		})
 		if err != nil {
 			return nil, err
 		}
-
 		buffer := new(bytes.Buffer)
 		buffer.Write(data)
-
-		req, err := http.NewRequest("POST", writer.url, buffer)
+		url := writer.url
+		if len(logger.url) > 0 {
+			url = logger.url
+		}
+		req, err := http.NewRequest("POST", url, buffer)
 		if err != nil {
 			return nil, err
 		}
@@ -156,10 +172,58 @@ func (w *HttpLogWriter) GetHeaders() map[string]string {
 	return w.headers
 }
 
+func any2string(any interface{}) string {
+	switch any.(type) {
+	case string:
+		return any.(string)
+	default:
+		data, err := json.Marshal(any)
+		if err == nil {
+			return string(data)
+		}
+	}
+	return ""
+}
+
+func getExtendReport(extends []interface{}) (bool, []string) {
+	extsz := len(extends)
+	if extsz > 0 {
+		switch extends[0].(type) {
+		case int8, int16, int32, int64, int:
+			if reflect.ValueOf(extends[0]).Int() == int64(EX_REPORT) {
+				rtn := make([]string, 0)
+				for i := 1; i < extsz; i++ {
+					rtn = append(rtn, any2string(extends[i]))
+				}
+				return true, rtn
+			}
+		}
+	}
+	return false, nil
+}
+
 // This is the SocketLogWriter's output method
 func (w *HttpLogWriter) LogWrite(rec *LogRecord) {
 	if rec != nil {
-		bodyInfo, err := json.Marshal(map[string]string{"data": rec.Message})
+		url, header, body := "", "", ""
+		if len(rec.Message) > 0 {
+			body = rec.Message
+		} else if len(rec.Extend) > 0 {
+			succ, data := getExtendReport(rec.Extend)
+			if succ == true {
+				dlen := len(data)
+				if dlen > 0 {
+					url = data[0]
+				}
+				if dlen > 1 {
+					header = data[1]
+				}
+				if dlen > 2 {
+					body = data[2]
+				}
+			}
+		}
+		bodyInfo, err := json.Marshal(map[string]string{"data": body})
 		if err != nil {
 			fmt.Fprint(os.Stderr, "HttpLogWriter LogWrite json Marshal failed, err is %v", err)
 			return
@@ -170,8 +234,10 @@ func (w *HttpLogWriter) LogWrite(rec *LogRecord) {
 			proc := w.procs[index]
 			if proc != nil {
 				proc.loggers <- &RequestLogger{
-					Body:     string(bodyInfo),
+					body:     string(bodyInfo),
 					datetime: rec.Created.Format(TIME_FORMATE_UNIX),
+					url:      url,
+					header:   header,
 				}
 			}
 		}
