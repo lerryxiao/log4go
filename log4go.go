@@ -193,8 +193,10 @@ func (log Logger) checkSkip(lvl level) bool {
 // dispatch log
 func (log Logger) dispatchLog(rec *LogRecord) {
 	if rec != nil {
+		eqrep := (rec.Level == REPORT)
 		for _, filt := range log {
-			if rec.Level >= filt.Level {
+			if (eqrep == true && rec.Level == filt.Level) ||
+				(eqrep == false && rec.Level <= filt.Level && filt.Level != REPORT) {
 				filt.LogWrite(rec)
 			}
 		}
