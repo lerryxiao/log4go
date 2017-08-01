@@ -196,7 +196,7 @@ func (log Logger) dispatchLog(rec *LogRecord) {
 		eqrep := (rec.Level == REPORT)
 		for _, filt := range log {
 			if (eqrep == true && rec.Level == filt.Level) ||
-				(eqrep == false && rec.Level <= filt.Level && filt.Level != REPORT) {
+				(eqrep == false && rec.Level >= filt.Level && filt.Level != REPORT) {
 				filt.LogWrite(rec)
 			}
 		}
