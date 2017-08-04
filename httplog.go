@@ -19,22 +19,18 @@ type RequestLogger struct {
 	header   string
 }
 
+type FlumeData map[string]interface{}
+
 func (logger *RequestLogger) transRequest(writer *HttpLogWriter) (*http.Request, error) {
 	if writer != nil {
-		header := ""
 		if len(logger.header) <= 0 {
 			writer.headers["datetime"] = logger.datetime
-			data, err := json.Marshal(writer.headers)
-			if err != nil {
-				return nil, err
-			}
-			header = string(data)
-		} else {
-			header = logger.header
 		}
-		data, err := json.Marshal(map[string]string{
-			"headers": header,
-			"body":    logger.body,
+		data, err := json.Marshal([]FlumeData{
+			FlumeData{
+				"headers": &writer.headers,
+				"body":    logger.body,
+			},
 		})
 		if err != nil {
 			return nil, err
@@ -50,7 +46,6 @@ func (logger *RequestLogger) transRequest(writer *HttpLogWriter) (*http.Request,
 			return nil, err
 		}
 		req.Header.Set("Content-Type", "application/json;charset=utf-8")
-
 		return req, nil
 	}
 	return nil, nil
@@ -60,7 +55,6 @@ func (logger *RequestLogger) transRequest(writer *HttpLogWriter) (*http.Request,
 type loggerProc struct {
 	loggers chan *RequestLogger //数据缓存
 	stop    chan bool           //结束标志
-	client  *http.Client        //http客户端
 	writer  *HttpLogWriter      //日志输出
 }
 
@@ -68,9 +62,7 @@ func NewLoggerProc(writer *HttpLogWriter, bufferSize int) *loggerProc {
 	proc := &loggerProc{
 		loggers: make(chan *RequestLogger, bufferSize),
 		stop:    make(chan bool),
-		client:  &http.Client{},
 	}
-	proc.client.Timeout = time.Duration(10) * time.Second
 	proc.writer = writer
 	return proc
 }
@@ -109,7 +101,9 @@ func (proc *loggerProc) saveLogger(logger *RequestLogger) {
 		return
 	}
 
-	response, err := proc.client.Do(req)
+	client := &http.Client{}
+	client.Timeout = time.Duration(10) * time.Second
+	response, err := client.Do(req)
 	if err != nil {
 		fmt.Fprint(os.Stderr, "save log requst failed, api is %s, err is %v", proc.writer.url, err)
 		return
@@ -223,7 +217,7 @@ func (w *HttpLogWriter) LogWrite(rec *LogRecord) {
 				}
 			}
 		}
-		bodyInfo, err := json.Marshal(map[string]string{"data": body})
+		bodyInfo, err := json.Marshal(body)
 		if err != nil {
 			fmt.Fprint(os.Stderr, "HttpLogWriter LogWrite json Marshal failed, err is %v", err)
 			return
