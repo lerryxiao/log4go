@@ -7,7 +7,6 @@ import (
 	"math/rand"
 	"net/http"
 	"os"
-	"reflect"
 	"time"
 )
 
@@ -16,19 +15,35 @@ type RequestLogger struct {
 	body     string
 	datetime string
 	url      string
-	header   string
+	header   interface{}
 }
 
 type FlumeData map[string]interface{}
 
 func (logger *RequestLogger) transRequest(writer *HttpLogWriter) (*http.Request, error) {
 	if writer != nil {
-		if len(logger.header) <= 0 {
-			writer.headers["datetime"] = logger.datetime
+		var headers *map[string]interface{}
+		if logger.header != nil {
+			lheader := logger.header.(map[string]interface{})
+			if lheader != nil {
+				headers = &lheader
+			}
+		}
+		if len(writer.headers) > 0 {
+			if headers == nil {
+				headers = &writer.headers
+			} else {
+				for key, value := range writer.headers {
+					(*headers)[key] = value
+				}
+			}
+		}
+		if headers != nil {
+			(*headers)["datetime"] = logger.datetime
 		}
 		data, err := json.Marshal([]FlumeData{
 			FlumeData{
-				"headers": &writer.headers,
+				"headers": headers,
 				"body":    logger.body,
 			},
 		})
@@ -114,10 +129,10 @@ func (proc *loggerProc) saveLogger(logger *RequestLogger) {
 
 // This log writer sends output to a http server
 type HttpLogWriter struct {
-	procs   []*loggerProc     //协程数组
-	prand   *rand.Rand        //随机数
-	url     string            //上报链接
-	headers map[string]string //http headers
+	procs   []*loggerProc          //协程数组
+	prand   *rand.Rand             //随机数
+	url     string                 //上报链接
+	headers map[string]interface{} //http headers
 }
 
 const (
@@ -125,7 +140,7 @@ const (
 	TIME_FORMATE_UNIX = "2006-01-02T15:04:05+08:00" //unix format
 )
 
-func NewHttpLogWriter(url string, header map[string]string, procSize int) *HttpLogWriter {
+func NewHttpLogWriter(url string, header map[string]interface{}, procSize int) *HttpLogWriter {
 	if procSize <= 0 {
 		procSize = LOGGER_PROC_CNT
 	}
@@ -162,65 +177,41 @@ func (w *HttpLogWriter) AddHeader(key, value string) {
 	w.headers[key] = value
 }
 
-func (w *HttpLogWriter) GetHeaders() map[string]string {
+func (w *HttpLogWriter) GetHeaders() map[string]interface{} {
 	return w.headers
-}
-
-func any2string(any interface{}) string {
-	switch any.(type) {
-	case string:
-		return any.(string)
-	default:
-		data, err := json.Marshal(any)
-		if err == nil {
-			return string(data)
-		}
-	}
-	return ""
-}
-
-func getExtendReport(extends []interface{}) (bool, []string) {
-	extsz := len(extends)
-	if extsz > 0 {
-		switch extends[0].(type) {
-		case int8, int16, int32, int64, int:
-			if reflect.ValueOf(extends[0]).Int() == int64(EX_REPORT) {
-				rtn := make([]string, 0)
-				for i := 1; i < extsz; i++ {
-					rtn = append(rtn, any2string(extends[i]))
-				}
-				return true, rtn
-			}
-		}
-	}
-	return false, nil
 }
 
 // This is the SocketLogWriter's output method
 func (w *HttpLogWriter) LogWrite(rec *LogRecord) {
 	if rec != nil {
-		url, header, body := "", "", ""
+		url, body := "", ""
+		var header interface{}
 		if len(rec.Message) > 0 {
 			body = rec.Message
-		} else if len(rec.Extend) > 0 {
-			succ, data := getExtendReport(rec.Extend)
-			if succ == true {
-				dlen := len(data)
-				if dlen > 0 {
-					url = data[0]
+		}
+		if len(rec.Extend) > 0 {
+			switch etp, edata := rec.GetExtend(); etp {
+			case EX_URL:
+				if len(edata) > 0 {
+					url = edata[0].(string)
 				}
-				if dlen > 1 {
-					header = data[1]
+			case EX_URL_HEAD:
+				if len(edata) > 1 {
+					url = edata[0].(string)
+					header = edata[1]
 				}
-				if dlen > 2 {
-					body = data[2]
+			case EX_URL_BODY:
+				if len(edata) > 1 {
+					url = edata[0].(string)
+					body = edata[1].(string)
+				}
+			case EX_URL_HEAD_BODY:
+				if len(edata) > 2 {
+					url = edata[0].(string)
+					header = edata[1]
+					body = edata[2].(string)
 				}
 			}
-		}
-		bodyInfo, err := json.Marshal(body)
-		if err != nil {
-			fmt.Fprint(os.Stderr, "HttpLogWriter LogWrite json Marshal failed, err is %v", err)
-			return
 		}
 		maxCnt := len(w.procs)
 		index := w.prand.Intn(maxCnt)
@@ -228,7 +219,7 @@ func (w *HttpLogWriter) LogWrite(rec *LogRecord) {
 			proc := w.procs[index]
 			if proc != nil {
 				proc.loggers <- &RequestLogger{
-					body:     string(bodyInfo),
+					body:     body,
 					datetime: rec.Created.Format(TIME_FORMATE_UNIX),
 					url:      url,
 					header:   header,

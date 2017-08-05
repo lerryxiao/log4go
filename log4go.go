@@ -98,8 +98,11 @@ var (
 )
 
 const (
-	EX_NONE int8 = iota
-	EX_REPORT
+	EX_NONE uint8 = iota
+	EX_URL
+	EX_URL_HEAD
+	EX_URL_BODY
+	EX_URL_HEAD_BODY
 )
 
 /****** LogRecord ******/
@@ -111,6 +114,27 @@ type LogRecord struct {
 	Source  string    // The message source
 	Message string    // The log message
 	Extend  []interface{}
+}
+
+func (record LogRecord) SetExtend(tp uint8, data []interface{}) {
+	record.Extend = make([]interface{}, len(data)+1)
+	record.Extend[0] = tp
+	for index, info := range data {
+		record.Extend[index+1] = info
+	}
+}
+
+func (record LogRecord) GetExtend() (tp uint8, data []interface{}) {
+	tp = EX_NONE
+	data = nil
+	elen := len(record.Extend)
+	if elen > 0 {
+		tp = record.Extend[0].(uint8)
+		if elen > 1 {
+			data = record.Extend[1:]
+		}
+	}
+	return
 }
 
 /****** LogWriter ******/
@@ -289,22 +313,50 @@ func (log Logger) Logc(lvl level, closure func() string) {
 	log.intLogc(lvl, closure)
 }
 
-func (log Logger) LogReport(lvl level, url, header, body interface{}) {
+func (log Logger) LogReport(lvl level, url string, header interface{}, body string) {
 	// check skip
 	if log.checkSkip(lvl) == true {
 		return
+	}
+
+	nurl := len(url) <= 0
+	nhead := header == nil
+	nbody := len(body) <= 0
+
+	var extend []interface{}
+	if nurl == false && nhead == false && nbody == false {
+		extend = []interface{}{
+			EX_URL_HEAD_BODY,
+			url,
+			header,
+			body,
+		}
+	} else if nurl == false && nhead == false {
+		extend = []interface{}{
+			EX_URL_HEAD,
+			url,
+			header,
+		}
+	} else if nurl == false && nbody == false {
+		extend = []interface{}{
+			EX_URL_BODY,
+			url,
+			body,
+		}
+	} else if nurl == false {
+		extend = []interface{}{
+			EX_URL,
+			url,
+		}
+	} else {
+		extend = nil
 	}
 
 	// dispatch log
 	log.dispatchLog(&LogRecord{
 		Level:   lvl,
 		Created: time.Now(),
-		Extend: []interface{}{
-			EX_REPORT,
-			url,
-			header,
-			body,
-		},
+		Extend:  extend,
 	})
 }
 
@@ -400,6 +452,6 @@ func (log Logger) Report(arg0 interface{}, args ...interface{}) {
 }
 
 // Report Log by url
-func (log Logger) ReportAPI(url string, header, body interface{}) {
+func (log Logger) ReportAPI(url string, header interface{}, body string) {
 	log.LogReport(REPORT, url, header, body)
 }

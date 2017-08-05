@@ -306,7 +306,7 @@ func xmlToSocketLogWriter(filename string, props []xmlProperty, enabled bool) (*
 
 func xmlToHttpLogWriter(filename string, props []xmlProperty, enabled bool) (*HttpLogWriter, bool) {
 	url := ""
-	headers := make(map[string]string)
+	headers := make(map[string]interface{})
 	procnum := 0
 
 	// Parse properties
