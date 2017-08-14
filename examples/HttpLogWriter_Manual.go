@@ -35,23 +35,31 @@ func getLogRecord() *l4g.LogRecord {
 	}
 }
 
+func toJson(node interface{}) string {
+	rel, err := json.Marshal(node)
+	if err == nil {
+		return string(rel)
+	}
+	return ""
+}
+
 func getLogRecord2() *l4g.LogRecord {
 	return &l4g.LogRecord{
 		Level:   l4g.FATAL,
 		Created: time.Unix(time.Now().Unix(), 0).In(time.UTC),
 		Extend: []interface{}{
-			l4g.EX_REPORT,
+			l4g.EX_URL_HEAD_BODY,
 			"http://127.0.0.1:8080/logger",
 			map[string]string{
 				"appKey":    "IsD3UJ4Xgl",
 				"from":      "sdk",
 				"requestID": "1111111111111",
 			},
-			map[string]string{
+			toJson(map[string]string{
 				"signature": "testSignature",
 				"nonce":     "654321",
 				"version":   "2.0",
-			},
+			}),
 		},
 	}
 }
@@ -64,7 +72,7 @@ func main() {
 
 	go router.Run()
 
-	httplog := l4g.NewHttpLogWriter("http://127.0.0.1:8080/logger", map[string]string{
+	httplog := l4g.NewHttpLogWriter("http://127.0.0.1:8080/logger", map[string]interface{}{
 		"appKey":    "IsD3UJ4Xgl",
 		"from":      "sdk",
 		"requestID": "xxxadfasefafa",

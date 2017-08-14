@@ -234,18 +234,19 @@ func (log Logger) dispatchLog(rec *LogRecord) {
 }
 
 /******* Logging *******/
+func getRunCaller(skip int) string {
+	pc, _, lineno, ok := runtime.Caller(skip + 1)
+	if ok {
+		return fmt.Sprintf("%s:%d", runtime.FuncForPC(pc).Name(), lineno)
+	}
+	return ""
+}
+
 // Send a formatted log message internally
-func (log Logger) intLogf(lvl level, format string, args ...interface{}) {
+func (log Logger) intLogf(skip int, lvl level, format string, args ...interface{}) {
 	// check skip
 	if log.checkSkip(lvl) == true {
 		return
-	}
-
-	// Determine caller func
-	pc, _, lineno, ok := runtime.Caller(2)
-	src := ""
-	if ok {
-		src = fmt.Sprintf("%s:%d", runtime.FuncForPC(pc).Name(), lineno)
 	}
 
 	msg := format
@@ -257,30 +258,23 @@ func (log Logger) intLogf(lvl level, format string, args ...interface{}) {
 	log.dispatchLog(&LogRecord{
 		Level:   lvl,
 		Created: time.Now(),
-		Source:  src,
+		Source:  getRunCaller(skip + 1),
 		Message: msg,
 	})
 }
 
 // Send a closure log message internally
-func (log Logger) intLogc(lvl level, closure func() string) {
+func (log Logger) intLogc(skip int, lvl level, closure func() string) {
 	// check skip
 	if log.checkSkip(lvl) == true {
 		return
-	}
-
-	// Determine caller func
-	pc, _, lineno, ok := runtime.Caller(2)
-	src := ""
-	if ok {
-		src = fmt.Sprintf("%s:%d", runtime.FuncForPC(pc).Name(), lineno)
 	}
 
 	// dispatch log
 	log.dispatchLog(&LogRecord{
 		Level:   lvl,
 		Created: time.Now(),
-		Source:  src,
+		Source:  getRunCaller(skip + 1),
 		Message: closure(),
 	})
 }
@@ -304,16 +298,16 @@ func (log Logger) Log(lvl level, source, message string) {
 // Logf logs a formatted log message at the given log level, using the caller as
 // its source.
 func (log Logger) Logf(lvl level, format string, args ...interface{}) {
-	log.intLogf(lvl, format, args...)
+	log.intLogf(1, lvl, format, args...)
 }
 
 // Logc logs a string returned by the closure at the given log level, using the caller as
 // its source.  If no log message would be written, the closure is never called.
 func (log Logger) Logc(lvl level, closure func() string) {
-	log.intLogc(lvl, closure)
+	log.intLogc(1, lvl, closure)
 }
 
-func (log Logger) LogReport(lvl level, url string, header interface{}, body string) {
+func (log Logger) LogReport(skip int, lvl level, url string, header interface{}, body string) {
 	// check skip
 	if log.checkSkip(lvl) == true {
 		return
@@ -357,6 +351,7 @@ func (log Logger) LogReport(lvl level, url string, header interface{}, body stri
 		Level:   lvl,
 		Created: time.Now(),
 		Extend:  extend,
+		Source:  getRunCaller(skip + 1),
 	})
 }
 
@@ -379,13 +374,13 @@ func (log Logger) LogCmm(nerr bool, lvl level, arg0 interface{}, args ...interfa
 		switch first := arg0.(type) {
 		case string:
 			// Use the string as a format string
-			log.intLogf(lvl, first, args...)
+			log.intLogf(2, lvl, first, args...)
 		case func() string:
 			// Log the closure (no other arguments used)
-			log.intLogc(lvl, first)
+			log.intLogc(2, lvl, first)
 		default:
 			// Build a format string so that it will be similar to Sprint
-			log.intLogf(lvl, fmt.Sprint(arg0)+strings.Repeat(" %v", len(args)), args...)
+			log.intLogf(2, lvl, fmt.Sprint(arg0)+strings.Repeat(" %v", len(args)), args...)
 		}
 	} else {
 		var msg string
@@ -400,7 +395,7 @@ func (log Logger) LogCmm(nerr bool, lvl level, arg0 interface{}, args ...interfa
 			// Build a format string so that it will be similar to Sprint
 			msg = fmt.Sprintf(fmt.Sprint(arg0)+strings.Repeat(" %v", len(args)), args...)
 		}
-		log.intLogf(lvl, msg)
+		log.intLogf(2, lvl, msg)
 		return errors.New(msg)
 	}
 	return nil
@@ -453,5 +448,5 @@ func (log Logger) Report(arg0 interface{}, args ...interface{}) {
 
 // Report Log by url
 func (log Logger) ReportAPI(url string, header interface{}, body string) {
-	log.LogReport(REPORT, url, header, body)
+	log.LogReport(1, REPORT, url, header, body)
 }

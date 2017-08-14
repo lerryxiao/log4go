@@ -34,7 +34,7 @@ func main() {
 	// Log some experimental messages
 	log.Finest("Everything is created now (notice that I will not be printing to the file)")
 	log.Info("The time is now: %s", time.Now().Format("15:04:05 MST 2006/01/02"))
-	log.FATAL("Time to close out!")
+	log.Fatal("Time to close out!")
 
 	// Close the log
 	log.Close()
