@@ -48,6 +48,7 @@ package log4go
 import (
 	"errors"
 	"fmt"
+	"os"
 	"runtime"
 	"strings"
 	"time"
@@ -343,7 +344,8 @@ func (log Logger) LogReport(skip int, lvl level, url string, header interface{},
 			url,
 		}
 	} else {
-		extend = nil
+		fmt.Fprintf(os.Stderr, "LogReport extend is nil, url: %s", url)
+		return
 	}
 
 	// dispatch log
