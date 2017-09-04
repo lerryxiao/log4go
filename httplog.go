@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-//Requst logger struct
+// RequestLogger struct
 type RequestLogger struct {
 	body     string
 	datetime string
@@ -18,6 +18,7 @@ type RequestLogger struct {
 	header   interface{}
 }
 
+// FlumeData 存储数据结构
 type FlumeData map[string]interface{}
 
 func (logger *RequestLogger) transRequest(writer *HttpLogWriter) (*http.Request, error) {
@@ -73,6 +74,7 @@ type loggerProc struct {
 	writer  *HttpLogWriter      //日志输出
 }
 
+// NewLoggerProc 创建logger proc方法
 func NewLoggerProc(writer *HttpLogWriter, bufferSize int) *loggerProc {
 	proc := &loggerProc{
 		loggers: make(chan *RequestLogger, bufferSize),
@@ -112,7 +114,7 @@ func (proc *loggerProc) saveLogger(logger *RequestLogger) {
 
 	req, err := logger.transRequest(proc.writer)
 	if err != nil {
-		fmt.Fprint(os.Stderr, "trans request failed, err is %v", err)
+		fmt.Fprintf(os.Stderr, "trans request failed, err is %v", err)
 		return
 	}
 
@@ -120,7 +122,7 @@ func (proc *loggerProc) saveLogger(logger *RequestLogger) {
 	client.Timeout = time.Duration(10) * time.Second
 	response, err := client.Do(req)
 	if err != nil {
-		fmt.Fprint(os.Stderr, "save log requst failed, api is %s, err is %v", proc.writer.url, err)
+		fmt.Fprintf(os.Stderr, "save log requst failed, api is %s, err is %v", proc.writer.url, err)
 		return
 	}
 
