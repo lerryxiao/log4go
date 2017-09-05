@@ -165,18 +165,16 @@ type Logger map[string]*Filter
 
 // Create a new logger.
 //
-// DEPRECATED: Use make(Logger) instead.
+// Use make(Logger) instead.
 func NewLogger() Logger {
-	//os.Stderr.WriteString("warning: use of deprecated NewLogger\n")
 	return make(Logger)
 }
 
 // Create a new logger with a "stdout" filter configured to send log messages at
 // or above lvl to standard output.
 //
-// DEPRECATED: use NewDefaultLogger instead.
+// use NewDefaultLogger instead.
 func NewConsoleLogger(lvl level) Logger {
-	//os.Stderr.WriteString("warning: use of deprecated NewConsoleLogger\n")
 	return Logger{
 		"stdout": &Filter{lvl, NewConsoleLogWriter()},
 	}
