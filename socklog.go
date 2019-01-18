@@ -38,27 +38,39 @@ func NewSocketLogWriter(proto, hostport string) *SocketLogWriter {
 	}
 
 	go func() {
-		defer func() {
-			if sock != nil && proto == "tcp" {
-				sock.Close()
-			}
-			w.stop <- true
-		}()
-
-		for rec := range w.rec {
-			// Marshall into JSON
-			js, err := json.Marshal(rec)
-			if err != nil {
-				fmt.Fprint(os.Stderr, "SocketLogWriter(%q): %s", hostport, err)
-				return
-			}
-
-			_, err = sock.Write(js)
-			if err != nil {
-				fmt.Fprint(os.Stderr, "SocketLogWriter(%q): %s", hostport, err)
-				return
+		for {
+			select {
+			case <-w.stop:
+				{
+					goto EXIT
+				}
+			case rec, ok := <-w.rec:
+				{
+					if ok == false {
+						goto EXIT
+					}
+					if rec == nil {
+						continue
+					}
+					// Marshall into JSON
+					js, err := json.Marshal(rec)
+					if err != nil {
+						fmt.Fprint(os.Stderr, "SocketLogWriter(%q): %s", hostport, err)
+						return
+					}
+					_, err = sock.Write(js)
+					if err != nil {
+						fmt.Fprint(os.Stderr, "SocketLogWriter(%q): %s", hostport, err)
+						return
+					}
+				}
 			}
 		}
+	EXIT:
+		if sock != nil && proto == "tcp" {
+			sock.Close()
+		}
+		w.stop <- true
 	}()
 
 	return w

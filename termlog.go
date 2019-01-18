@@ -27,22 +27,35 @@ func NewConsoleLogWriter() *ConsoleLogWriter {
 }
 
 func (w ConsoleLogWriter) run(out io.Writer) {
-	defer func() {
-		w.stop <- true
-	}()
-
 	var timestr string
 	var timestrAt int64
 
-	for rec := range w.rec {
-		if at := rec.Created.UnixNano() / 1e9; at != timestrAt {
-			timestr, timestrAt = rec.Created.Format("01/02/06 15:04:05"), at
+	for {
+		select {
+		case <-w.stop:
+			{
+				goto EXIT
+			}
+		case rec, ok := <-w.rec:
+			{
+				if ok == false {
+					goto EXIT
+				}
+				if rec == nil {
+					continue
+				}
+				if at := rec.Created.UnixNano() / 1e9; at != timestrAt {
+					timestr, timestrAt = rec.Created.Format("01/02/06 15:04:05"), at
+				}
+				fmt.Fprint(out, "[", timestr, "] [", levelStrings[rec.Level], "] ", rec.Message, "\n")
+			}
 		}
-		fmt.Fprint(out, "[", timestr, "] [", levelStrings[rec.Level], "] ", rec.Message, "\n")
 	}
+EXIT:
+	w.stop <- true
 }
 
-// This is the ConsoleLogWriter's output method.  This will block if the output
+// LogWrite This is the ConsoleLogWriter's output method.  This will block if the output
 // buffer is full.
 func (w *ConsoleLogWriter) LogWrite(rec *LogRecord) {
 	w.rec <- rec
