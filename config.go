@@ -31,6 +31,7 @@ type xmlLoggerConfig struct {
 // Load XML configuration; see examples/example.xml for documentation
 func (log Logger) LoadConfiguration(filename string) {
 	log.Close()
+	stopSrv = false
 
 	// Open the configuration file
 	fd, err := os.Open(filename)

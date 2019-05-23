@@ -194,15 +194,14 @@ func NewDefaultLogger(lvl level) Logger {
 // you want to guarantee that all log messages are written.  Close removes
 // all filters (and thus all LogWriters) from the logger.
 func (log Logger) Close() {
-	if stopSrv == true {
-		return
-	}
 	stopSrv = true
+	fmt.Println("logger close start")
 	// Close all open loggers
 	for name, filt := range log {
 		filt.Close()
 		delete(log, name)
 	}
+	//fmt.Println("logger close end")
 }
 
 // Add a new LogWriter to the Logger which will only log messages at lvl or
