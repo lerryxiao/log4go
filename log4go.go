@@ -96,6 +96,7 @@ var (
 	// LogBufferLength specifies how many log messages a particular log4go
 	// logger can buffer at a time before writing them.
 	LogBufferLength = 32
+	stopSrv         = false
 )
 
 const (
@@ -193,6 +194,10 @@ func NewDefaultLogger(lvl level) Logger {
 // you want to guarantee that all log messages are written.  Close removes
 // all filters (and thus all LogWriters) from the logger.
 func (log Logger) Close() {
+	if stopSrv == true {
+		return
+	}
+	stopSrv = true
 	// Close all open loggers
 	for name, filt := range log {
 		filt.Close()
@@ -355,7 +360,7 @@ func (log Logger) LogReport(skip int, lvl level, url string, header interface{},
 	})
 }
 
-// comm func
+// LogCmm comm func
 // nerr means whether need return error
 // level means log level
 // The behavior of Debug depends on the first argument:
@@ -370,6 +375,9 @@ func (log Logger) LogReport(skip int, lvl level, url string, header interface{},
 //   When given anything else, the log message will be each of the arguments
 //   formatted with %v and separated by spaces (ala Sprint).
 func (log Logger) LogCmm(nerr bool, lvl level, arg0 interface{}, args ...interface{}) error {
+	if stopSrv == true {
+		return nil
+	}
 	if nerr == false {
 		switch first := arg0.(type) {
 		case string:
