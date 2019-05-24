@@ -21,7 +21,7 @@ type RequestLogger struct {
 // FlumeData 存储数据结构
 type FlumeData map[string]interface{}
 
-func (logger *RequestLogger) transRequest(writer *HttpLogWriter) (*http.Request, error) {
+func (logger *RequestLogger) transRequest(writer *HTTPLogWriter) (*http.Request, error) {
 	if writer != nil {
 		var headers *map[string]interface{}
 		if logger.header != nil {
@@ -67,16 +67,16 @@ func (logger *RequestLogger) transRequest(writer *HttpLogWriter) (*http.Request,
 	return nil, nil
 }
 
-//log proc struct
-type loggerProc struct {
+// LoggerProc log proc struct
+type LoggerProc struct {
 	loggers chan *RequestLogger //数据缓存
 	stop    chan bool           //结束标志
-	writer  *HttpLogWriter      //日志输出
+	writer  *HTTPLogWriter      //日志输出
 }
 
 // NewLoggerProc 创建logger proc方法
-func NewLoggerProc(writer *HttpLogWriter, bufferSize int) *loggerProc {
-	proc := &loggerProc{
+func NewLoggerProc(writer *HTTPLogWriter, bufferSize int) *LoggerProc {
+	proc := &LoggerProc{
 		loggers: make(chan *RequestLogger, bufferSize),
 		stop:    make(chan bool),
 	}
@@ -85,29 +85,37 @@ func NewLoggerProc(writer *HttpLogWriter, bufferSize int) *loggerProc {
 }
 
 //启动日志协程
-func (proc *loggerProc) startLogger() {
+func (proc *LoggerProc) startLogger() {
 	defer func() {
 		proc.stop <- true
 	}()
 	for {
 		select {
-		case log, ok := <-proc.loggers:
-			if !ok {
-				return
+		case <-proc.stop:
+			{
+				goto EXIT
 			}
-			proc.saveLogger(log)
+		case log, ok := <-proc.loggers:
+			{
+				if !ok {
+					return
+				}
+				proc.saveLogger(log)
+			}
 		}
 	}
+EXIT:
 }
 
 //停止日志协程
-func (proc *loggerProc) stopLogger() {
-	close(proc.loggers)
+func (proc *LoggerProc) stopLogger() {
+	proc.stop <- true
 	<-proc.stop
+	close(proc.loggers)
 }
 
 //处理日志
-func (proc *loggerProc) saveLogger(logger *RequestLogger) {
+func (proc *LoggerProc) saveLogger(logger *RequestLogger) {
 	if logger == nil || proc == nil {
 		return
 	}
@@ -129,26 +137,28 @@ func (proc *loggerProc) saveLogger(logger *RequestLogger) {
 	response.Body.Close()
 }
 
-// This log writer sends output to a http server
-type HttpLogWriter struct {
-	procs   []*loggerProc          //协程数组
+// HTTPLogWriter This log writer sends output to a http server
+type HTTPLogWriter struct {
+	procs   []*LoggerProc          //协程数组
 	prand   *rand.Rand             //随机数
 	url     string                 //上报链接
 	headers map[string]interface{} //http headers
 }
 
+// 常量定义
 const (
-	LOGGER_PROC_CNT   = 2                           //默认处理日志的协程个数
-	TIME_FORMATE_UNIX = "2006-01-02T15:04:05+08:00" //unix format
+	LoggerProcCnt   = 2                           //默认处理日志的协程个数
+	TimeFormateUnix = "2006-01-02T15:04:05+08:00" //unix format
 )
 
-func NewHttpLogWriter(url string, header map[string]interface{}, procSize int) *HttpLogWriter {
+// NewHTTPLogWriter 创建http writer
+func NewHTTPLogWriter(url string, header map[string]interface{}, procSize int) *HTTPLogWriter {
 	if procSize <= 0 {
-		procSize = LOGGER_PROC_CNT
+		procSize = LoggerProcCnt
 	}
 
-	w := &HttpLogWriter{
-		procs:   make([]*loggerProc, procSize),
+	w := &HTTPLogWriter{
+		procs:   make([]*LoggerProc, procSize),
 		prand:   rand.New(rand.NewSource(time.Now().UnixNano())),
 		url:     url,
 		headers: header,
@@ -166,25 +176,28 @@ func NewHttpLogWriter(url string, header map[string]interface{}, procSize int) *
 	return w
 }
 
-//成员方法
-func (w *HttpLogWriter) SetUrl(url string) {
+// SetURL 成员方法
+func (w *HTTPLogWriter) SetURL(url string) {
 	w.url = url
 }
 
-func (w *HttpLogWriter) GetUrl() string {
+// GetURL 获取URL
+func (w *HTTPLogWriter) GetURL() string {
 	return w.url
 }
 
-func (w *HttpLogWriter) AddHeader(key, value string) {
+// AddHeader 增加head
+func (w *HTTPLogWriter) AddHeader(key, value string) {
 	w.headers[key] = value
 }
 
-func (w *HttpLogWriter) GetHeaders() map[string]interface{} {
+// GetHeaders 增加heads
+func (w *HTTPLogWriter) GetHeaders() map[string]interface{} {
 	return w.headers
 }
 
-// This is the SocketLogWriter's output method
-func (w *HttpLogWriter) LogWrite(rec *LogRecord) {
+// LogWrite This is the SocketLogWriter's output method
+func (w *HTTPLogWriter) LogWrite(rec *LogRecord) {
 	if rec != nil {
 		url, body := "", ""
 		var header interface{}
@@ -193,21 +206,21 @@ func (w *HttpLogWriter) LogWrite(rec *LogRecord) {
 		}
 		if len(rec.Extend) > 0 {
 			switch etp, edata := rec.GetExtend(); etp {
-			case EX_URL:
+			case EXUrl:
 				if len(edata) > 0 {
 					url = edata[0].(string)
 				}
-			case EX_URL_HEAD:
+			case EXUrlHead:
 				if len(edata) > 1 {
 					url = edata[0].(string)
 					header = edata[1]
 				}
-			case EX_URL_BODY:
+			case EXUrlBody:
 				if len(edata) > 1 {
 					url = edata[0].(string)
 					body = edata[1].(string)
 				}
-			case EX_URL_HEAD_BODY:
+			case EXUrlHeadBody:
 				if len(edata) > 2 {
 					url = edata[0].(string)
 					header = edata[1]
@@ -222,7 +235,7 @@ func (w *HttpLogWriter) LogWrite(rec *LogRecord) {
 			if proc != nil {
 				proc.loggers <- &RequestLogger{
 					body:     body,
-					datetime: rec.Created.Format(TIME_FORMATE_UNIX),
+					datetime: rec.Created.Format(TimeFormateUnix),
 					url:      url,
 					header:   header,
 				}
@@ -232,7 +245,8 @@ func (w *HttpLogWriter) LogWrite(rec *LogRecord) {
 
 }
 
-func (w *HttpLogWriter) Close() {
+// Close 关闭
+func (w *HTTPLogWriter) Close() {
 	for index, proc := range w.procs {
 		if proc != nil {
 			proc.stopLogger()

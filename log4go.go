@@ -1,48 +1,3 @@
-// Copyright (C) 2010, Kyle Lemons <kyle@kylelemons.net>.  All rights reserved.
-
-// Package log4go provides level-based and highly configurable logging.
-//
-// Enhanced Logging
-//
-// This is inspired by the logging functionality in Java.  Essentially, you create a Logger
-// object and create output filters for it.  You can send whatever you want to the Logger,
-// and it will filter that based on your settings and send it to the outputs.  This way, you
-// can put as much debug code in your program as you want, and when you're done you can filter
-// out the mundane messages so only the important ones show up.
-//
-// Utility functions are provided to make life easier. Here is some example code to get started:
-//
-// log := log4go.NewLogger()
-// log.AddFilter("stdout", log4go.DEBUG, log4go.NewConsoleLogWriter())
-// log.AddFilter("log",    log4go.FINE,  log4go.NewFileLogWriter("example.log", true))
-// log.Info("The time is now: %s", time.LocalTime().Format("15:04:05 MST 2006/01/02"))
-//
-// The first two lines can be combined with the utility NewDefaultLogger:
-//
-// log := log4go.NewDefaultLogger(log4go.DEBUG)
-// log.AddFilter("log",    log4go.FINE,  log4go.NewFileLogWriter("example.log", true))
-// log.Info("The time is now: %s", time.LocalTime().Format("15:04:05 MST 2006/01/02"))
-//
-// Usage notes:
-// - The ConsoleLogWriter does not display the source of the message to standard
-//   output, but the FileLogWriter does.
-// - The utility functions (Info, Debug, Warn, etc) derive their source from the
-//   calling function, and this incurs extra overhead.
-//
-// Changes from 2.0:
-// - The external interface has remained mostly stable, but a lot of the
-//   internals have been changed, so if you depended on any of this or created
-//   your own LogWriter, then you will probably have to update your code.  In
-//   particular, Logger is now a map and ConsoleLogWriter is now a channel
-//   behind-the-scenes, and the LogWrite method no longer has return values.
-//
-// Future work: (please let me know if you think I should work on any of these particularly)
-// - Log file rotation
-// - Logging configuration files ala log4j
-// - Have the ability to remove filters?
-// - Have GetInfoChannel, GetDebugChannel, etc return a chan string that allows
-//   for another method of logging
-// - Add an XML filter type
 package log4go
 
 import (
@@ -56,10 +11,10 @@ import (
 
 // Version information
 const (
-	L4G_VERSION = "log4go-v3.0.1"
-	L4G_MAJOR   = 3
-	L4G_MINOR   = 0
-	L4G_BUILD   = 1
+	L4GVersion = "log4go-v3.0.1"
+	L4GMajor   = 3
+	L4GMinor   = 0
+	L4GBuild   = 1
 )
 
 /****** Constants ******/
@@ -67,6 +22,7 @@ const (
 // These are the integer logging levels used by the logger
 type level int
 
+// level 定义
 const (
 	FINEST level = iota
 	FINE
@@ -84,6 +40,7 @@ var (
 	levelStrings = [...]string{"fnst", "fine", "debug", "trace", "info", "warning", "error", "fatal", "report"}
 )
 
+// String 字符串输出
 func (l level) String() string {
 	if l < 0 || int(l) > len(levelStrings) {
 		return "UNKNOWN"
@@ -96,15 +53,15 @@ var (
 	// LogBufferLength specifies how many log messages a particular log4go
 	// logger can buffer at a time before writing them.
 	LogBufferLength = 32
-	stopSrv         = false
 )
 
+// 扩展定义
 const (
-	EX_NONE uint8 = iota
-	EX_URL
-	EX_URL_HEAD
-	EX_URL_BODY
-	EX_URL_HEAD_BODY
+	EXNone uint8 = iota
+	EXUrl
+	EXUrlHead
+	EXUrlBody
+	EXUrlHeadBody
 )
 
 /****** LogRecord ******/
@@ -118,6 +75,7 @@ type LogRecord struct {
 	Extend  []interface{}
 }
 
+// SetExtend 设置扩展
 func (record LogRecord) SetExtend(tp uint8, data []interface{}) {
 	record.Extend = make([]interface{}, len(data)+1)
 	record.Extend[0] = tp
@@ -126,8 +84,9 @@ func (record LogRecord) SetExtend(tp uint8, data []interface{}) {
 	}
 }
 
+// GetExtend 获取扩展
 func (record LogRecord) GetExtend() (tp uint8, data []interface{}) {
-	tp = EX_NONE
+	tp = EXNone
 	data = nil
 	elen := len(record.Extend)
 	if elen > 0 {
@@ -141,7 +100,7 @@ func (record LogRecord) GetExtend() (tp uint8, data []interface{}) {
 
 /****** LogWriter ******/
 
-// This is an interface for anything that should be able to write logs
+// LogWriter This is an interface for anything that should be able to write logs
 type LogWriter interface {
 	// This will be called to log a LogRecord message.
 	LogWrite(rec *LogRecord)
@@ -164,16 +123,14 @@ type Filter struct {
 // written.
 type Logger map[string]*Filter
 
-// Create a new logger.
-//
+// NewLogger Create a new logger.
 // Use make(Logger) instead.
 func NewLogger() Logger {
 	return make(Logger)
 }
 
-// Create a new logger with a "stdout" filter configured to send log messages at
+// NewConsoleLogger Create a new logger with a "stdout" filter configured to send log messages at
 // or above lvl to standard output.
-//
 // use NewDefaultLogger instead.
 func NewConsoleLogger(lvl level) Logger {
 	return Logger{
@@ -181,7 +138,7 @@ func NewConsoleLogger(lvl level) Logger {
 	}
 }
 
-// Create a new logger with a "stdout" filter configured to send log messages at
+// NewDefaultLogger Create a new logger with a "stdout" filter configured to send log messages at
 // or above lvl to standard output.
 func NewDefaultLogger(lvl level) Logger {
 	return Logger{
@@ -189,22 +146,19 @@ func NewDefaultLogger(lvl level) Logger {
 	}
 }
 
-// Closes all log writers in preparation for exiting the program or a
+// Close Closes all log writers in preparation for exiting the program or a
 // reconfiguration of logging.  Calling this is not really imperative, unless
 // you want to guarantee that all log messages are written.  Close removes
 // all filters (and thus all LogWriters) from the logger.
 func (log Logger) Close() {
-	stopSrv = true
-	fmt.Println("logger close start")
 	// Close all open loggers
 	for name, filt := range log {
 		filt.Close()
 		delete(log, name)
 	}
-	//fmt.Println("logger close end")
 }
 
-// Add a new LogWriter to the Logger which will only log messages at lvl or
+// AddFilter Add a new LogWriter to the Logger which will only log messages at lvl or
 // higher.  This function should not be called from multiple goroutines.
 // Returns the logger for chaining.
 func (log Logger) AddFilter(name string, lvl level, writer LogWriter) Logger {
@@ -282,7 +236,7 @@ func (log Logger) intLogc(skip int, lvl level, closure func() string) {
 	})
 }
 
-// Send a log message with manual level, source, and message.
+// Log Send a log message with manual level, source, and message.
 func (log Logger) Log(lvl level, source, message string) {
 	// check skip
 	if log.checkSkip(lvl) == true {
@@ -310,6 +264,7 @@ func (log Logger) Logc(lvl level, closure func() string) {
 	log.intLogc(1, lvl, closure)
 }
 
+// LogReport 上报
 func (log Logger) LogReport(skip int, lvl level, url string, header interface{}, body string) {
 	// check skip
 	if log.checkSkip(lvl) == true {
@@ -323,26 +278,26 @@ func (log Logger) LogReport(skip int, lvl level, url string, header interface{},
 	var extend []interface{}
 	if nurl == false && nhead == false && nbody == false {
 		extend = []interface{}{
-			EX_URL_HEAD_BODY,
+			EXUrlHeadBody,
 			url,
 			header,
 			body,
 		}
 	} else if nurl == false && nhead == false {
 		extend = []interface{}{
-			EX_URL_HEAD,
+			EXUrlHead,
 			url,
 			header,
 		}
 	} else if nurl == false && nbody == false {
 		extend = []interface{}{
-			EX_URL_BODY,
+			EXUrlBody,
 			url,
 			body,
 		}
 	} else if nurl == false {
 		extend = []interface{}{
-			EX_URL,
+			EXUrl,
 			url,
 		}
 	} else {
@@ -374,9 +329,6 @@ func (log Logger) LogReport(skip int, lvl level, url string, header interface{},
 //   When given anything else, the log message will be each of the arguments
 //   formatted with %v and separated by spaces (ala Sprint).
 func (log Logger) LogCmm(nerr bool, lvl level, arg0 interface{}, args ...interface{}) error {
-	if stopSrv == true {
-		return nil
-	}
 	if nerr == false {
 		switch first := arg0.(type) {
 		case string:
@@ -453,7 +405,7 @@ func (log Logger) Report(arg0 interface{}, args ...interface{}) {
 	log.LogCmm(false, REPORT, arg0, args...)
 }
 
-// Report Log by url
+// ReportAPI Report Log by url
 func (log Logger) ReportAPI(url string, header interface{}, body string) {
 	log.LogReport(1, REPORT, url, header, body)
 }

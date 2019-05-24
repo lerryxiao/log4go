@@ -1,5 +1,3 @@
-// Copyright (C) 2010, Kyle Lemons <kyle@kylelemons.net>.  All rights reserved.
-
 package log4go
 
 import (
@@ -8,15 +6,17 @@ import (
 	"os"
 )
 
-var stdout io.Writer = os.Stdout
+var (
+	stdout = os.Stdout
+)
 
-// This is the standard writer that prints to standard output.
+// ConsoleLogWriter This is the standard writer that prints to standard output.
 type ConsoleLogWriter struct {
 	rec  chan *LogRecord
 	stop chan bool
 }
 
-// This creates a new ConsoleLogWriter
+// NewConsoleLogWriter This creates a new ConsoleLogWriter
 func NewConsoleLogWriter() *ConsoleLogWriter {
 	w := &ConsoleLogWriter{
 		rec:  make(chan *LogRecord, LogBufferLength),
@@ -29,6 +29,10 @@ func NewConsoleLogWriter() *ConsoleLogWriter {
 func (w ConsoleLogWriter) run(out io.Writer) {
 	var timestr string
 	var timestrAt int64
+
+	defer func() {
+		w.stop <- true
+	}()
 
 	for {
 		select {
@@ -52,11 +56,9 @@ func (w ConsoleLogWriter) run(out io.Writer) {
 		}
 	}
 EXIT:
-	w.stop <- true
 }
 
-// LogWrite This is the ConsoleLogWriter's output method.  This will block if the output
-// buffer is full.
+// LogWrite This is the ConsoleLogWriter's output method.  This will block if the output buffer is full.
 func (w *ConsoleLogWriter) LogWrite(rec *LogRecord) {
 	w.rec <- rec
 }
@@ -64,6 +66,7 @@ func (w *ConsoleLogWriter) LogWrite(rec *LogRecord) {
 // Close stops the logger from sending messages to standard output.  Attempts to
 // send log messages to this logger after a Close have undefined behavior.
 func (w *ConsoleLogWriter) Close() {
-	close(w.rec)
+	w.stop <- true
 	<-w.stop
+	close(w.rec)
 }

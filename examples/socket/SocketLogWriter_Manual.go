@@ -2,9 +2,8 @@ package main
 
 import (
 	"time"
+	l4g "github.com/lerryxiao/log4go"
 )
-
-import l4g "github.com/lerryxiao/log4go"
 
 func main() {
 	log := l4g.NewLogger()

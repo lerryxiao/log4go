@@ -1,5 +1,3 @@
-// Copyright (C) 2010, Kyle Lemons <kyle@kylelemons.net>.  All rights reserved.
-
 package log4go
 
 import (
@@ -9,6 +7,7 @@ import (
 	"strings"
 )
 
+// 变量定义
 var (
 	Global Logger
 )
@@ -17,21 +16,22 @@ func init() {
 	Global = NewDefaultLogger(DEBUG)
 }
 
-// Wrapper for (*Logger).LoadConfiguration
+// LoadConfiguration Wrapper for (*Logger).LoadConfiguration
 func LoadConfiguration(filename string) {
 	Global.LoadConfiguration(filename)
 }
 
-// Wrapper for (*Logger).AddFilter
+// AddFilter Wrapper for (*Logger).AddFilter
 func AddFilter(name string, lvl level, writer LogWriter) {
 	Global.AddFilter(name, lvl, writer)
 }
 
-// Wrapper for (*Logger).Close (closes and removes all logwriters)
+// Close Wrapper for (*Logger).Close (closes and removes all logwriters)
 func Close() {
 	Global.Close()
 }
 
+// Crash  崩溃
 func Crash(args ...interface{}) {
 	if len(args) > 0 {
 		Global.intLogf(1, FATAL, strings.Repeat(" %v", len(args))[1:], args...)
@@ -39,14 +39,14 @@ func Crash(args ...interface{}) {
 	panic(args)
 }
 
-// Logs the given message and crashes the program
+// Crashf Logs the given message and crashes the program
 func Crashf(format string, args ...interface{}) {
 	Global.intLogf(1, FATAL, format, args...)
 	Global.Close() // so that hopefully the messages get logged
 	panic(fmt.Sprintf(format, args...))
 }
 
-// Compatibility with `log`
+// Exit Compatibility with `log`
 func Exit(args ...interface{}) {
 	if len(args) > 0 {
 		Global.intLogf(1, ERROR, strings.Repeat(" %v", len(args))[1:], args...)
@@ -55,57 +55,53 @@ func Exit(args ...interface{}) {
 	os.Exit(0)
 }
 
-// Compatibility with `log`
+// Exitf Compatibility with `log`
 func Exitf(format string, args ...interface{}) {
 	Global.intLogf(1, ERROR, format, args...)
 	Global.Close() // so that hopefully the messages get logged
 	os.Exit(0)
 }
 
-// Compatibility with `log`
+// Stderr Compatibility with `log`
 func Stderr(args ...interface{}) {
 	if len(args) > 0 {
 		Global.intLogf(1, ERROR, strings.Repeat(" %v", len(args))[1:], args...)
 	}
 }
 
-// Compatibility with `log`
+// Stderrf Compatibility with `log`
 func Stderrf(format string, args ...interface{}) {
 	Global.intLogf(1, ERROR, format, args...)
 }
 
-// Compatibility with `log`
+// Stdout Compatibility with `log`
 func Stdout(args ...interface{}) {
 	if len(args) > 0 {
 		Global.intLogf(1, INFO, strings.Repeat(" %v", len(args))[1:], args...)
 	}
 }
 
-// Compatibility with `log`
+// Stdoutf Compatibility with `log`
 func Stdoutf(format string, args ...interface{}) {
 	Global.intLogf(1, INFO, format, args...)
 }
 
-// Send a log message manually
-// Wrapper for (*Logger).Log
+// Log Send a log message manually Wrapper for (*Logger).Log
 func Log(lvl level, source, message string) {
 	Global.Log(lvl, source, message)
 }
 
-// Send a formatted log message easily
-// Wrapper for (*Logger).Logf
+// Logf Send a formatted log message easily Wrapper for (*Logger).Logf
 func Logf(lvl level, format string, args ...interface{}) {
 	Global.intLogf(1, lvl, format, args...)
 }
 
-// Send a closure log message
-// Wrapper for (*Logger).Logc
+// Logc Send a closure log message Wrapper for (*Logger).Logc
 func Logc(lvl level, closure func() string) {
 	Global.intLogc(1, lvl, closure)
 }
 
-// Utility for finest log messages (see Debug() for parameter explanation)
-// Wrapper for (*Logger).Finest
+// Finest Utility for finest log messages (see Debug() for parameter explanation) Wrapper for (*Logger).Finest
 func Finest(arg0 interface{}, args ...interface{}) {
 	const (
 		lvl = FINEST
@@ -123,8 +119,7 @@ func Finest(arg0 interface{}, args ...interface{}) {
 	}
 }
 
-// Utility for fine log messages (see Debug() for parameter explanation)
-// Wrapper for (*Logger).Fine
+// Fine Utility for fine log messages (see Debug() for parameter explanation) Wrapper for (*Logger).Fine
 func Fine(arg0 interface{}, args ...interface{}) {
 	const (
 		lvl = FINE
@@ -142,11 +137,10 @@ func Fine(arg0 interface{}, args ...interface{}) {
 	}
 }
 
-// Utility for debug log messages
+// Debug Utility for debug log messages
 // When given a string as the first argument, this behaves like Logf but with the DEBUG log level (e.g. the first argument is interpreted as a format for the latter arguments)
 // When given a closure of type func()string, this logs the string returned by the closure iff it will be logged.  The closure runs at most one time.
-// When given anything else, the log message will be each of the arguments formatted with %v and separated by spaces (ala Sprint).
-// Wrapper for (*Logger).Debug
+// When given anything else, the log message will be each of the arguments formatted with %v and separated by spaces (ala Sprint) Wrapper for (*Logger).Debug
 func Debug(arg0 interface{}, args ...interface{}) {
 	const (
 		lvl = DEBUG
@@ -164,8 +158,7 @@ func Debug(arg0 interface{}, args ...interface{}) {
 	}
 }
 
-// Utility for trace log messages (see Debug() for parameter explanation)
-// Wrapper for (*Logger).Trace
+// Trace Utility for trace log messages (see Debug() for parameter explanation) Wrapper for (*Logger).Trace
 func Trace(arg0 interface{}, args ...interface{}) {
 	const (
 		lvl = TRACE
@@ -183,8 +176,7 @@ func Trace(arg0 interface{}, args ...interface{}) {
 	}
 }
 
-// Utility for info log messages (see Debug() for parameter explanation)
-// Wrapper for (*Logger).Info
+// Info Utility for info log messages (see Debug() for parameter explanation) Wrapper for (*Logger).Info
 func Info(arg0 interface{}, args ...interface{}) {
 	const (
 		lvl = INFO
@@ -202,9 +194,8 @@ func Info(arg0 interface{}, args ...interface{}) {
 	}
 }
 
-// Utility for warn log messages (returns an error for easy function returns) (see Debug() for parameter explanation)
-// These functions will execute a closure exactly once, to build the error message for the return
-// Wrapper for (*Logger).Warn
+// Warn Utility for warn log messages (returns an error for easy function returns) (see Debug() for parameter explanation)
+// These functions will execute a closure exactly once, to build the error message for the return Wrapper for (*Logger).Warn
 func Warn(arg0 interface{}, args ...interface{}) error {
 	const (
 		lvl = WARNING
@@ -213,7 +204,7 @@ func Warn(arg0 interface{}, args ...interface{}) error {
 	case string:
 		// Use the string as a format string
 		Global.intLogf(1, lvl, first, args...)
-		return errors.New(fmt.Sprintf(first, args...))
+		return fmt.Errorf(first, args...)
 	case func() string:
 		// Log the closure (no other arguments used)
 		str := first()
@@ -224,12 +215,10 @@ func Warn(arg0 interface{}, args ...interface{}) error {
 		Global.intLogf(1, lvl, fmt.Sprint(first)+strings.Repeat(" %v", len(args)), args...)
 		return errors.New(fmt.Sprint(first) + fmt.Sprintf(strings.Repeat(" %v", len(args)), args...))
 	}
-	return nil
 }
 
-// Utility for error log messages (returns an error for easy function returns) (see Debug() for parameter explanation)
-// These functions will execute a closure exactly once, to build the error message for the return
-// Wrapper for (*Logger).Error
+// Error Utility for error log messages (returns an error for easy function returns) (see Debug() for parameter explanation)
+// These functions will execute a closure exactly once, to build the error message for the return Wrapper for (*Logger).Error
 func Error(arg0 interface{}, args ...interface{}) error {
 	const (
 		lvl = ERROR
@@ -238,7 +227,7 @@ func Error(arg0 interface{}, args ...interface{}) error {
 	case string:
 		// Use the string as a format string
 		Global.intLogf(1, lvl, first, args...)
-		return errors.New(fmt.Sprintf(first, args...))
+		return fmt.Errorf(first, args...)
 	case func() string:
 		// Log the closure (no other arguments used)
 		str := first()
@@ -249,12 +238,10 @@ func Error(arg0 interface{}, args ...interface{}) error {
 		Global.intLogf(1, lvl, fmt.Sprint(first)+strings.Repeat(" %v", len(args)), args...)
 		return errors.New(fmt.Sprint(first) + fmt.Sprintf(strings.Repeat(" %v", len(args)), args...))
 	}
-	return nil
 }
 
-// Utility for critical log messages (returns an error for easy function returns) (see Debug() for parameter explanation)
-// These functions will execute a closure exactly once, to build the error message for the return
-// Wrapper for (*Logger).Critical
+// Critical Utility for critical log messages (returns an error for easy function returns) (see Debug() for parameter explanation)
+// These functions will execute a closure exactly once, to build the error message for the return Wrapper for (*Logger).Critical
 func Critical(arg0 interface{}, args ...interface{}) error {
 	const (
 		lvl = FATAL
@@ -263,7 +250,7 @@ func Critical(arg0 interface{}, args ...interface{}) error {
 	case string:
 		// Use the string as a format string
 		Global.intLogf(1, lvl, first, args...)
-		return errors.New(fmt.Sprintf(first, args...))
+		return fmt.Errorf(first, args...)
 	case func() string:
 		// Log the closure (no other arguments used)
 		str := first()
@@ -274,5 +261,4 @@ func Critical(arg0 interface{}, args ...interface{}) error {
 		Global.intLogf(1, lvl, fmt.Sprint(first)+strings.Repeat(" %v", len(args)), args...)
 		return errors.New(fmt.Sprint(first) + fmt.Sprintf(strings.Repeat(" %v", len(args)), args...))
 	}
-	return nil
 }

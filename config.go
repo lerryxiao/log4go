@@ -1,5 +1,3 @@
-// Copyright (C) 2010, Kyle Lemons <kyle@kylelemons.net>.  All rights reserved.
-
 package log4go
 
 import (
@@ -28,10 +26,9 @@ type xmlLoggerConfig struct {
 	Filter []xmlFilter `xml:"filter"`
 }
 
-// Load XML configuration; see examples/example.xml for documentation
+// LoadConfiguration Load XML configuration; see examples/example.xml for documentation
 func (log Logger) LoadConfiguration(filename string) {
 	log.Close()
-	stopSrv = false
 
 	// Open the configuration file
 	fd, err := os.Open(filename)
@@ -116,7 +113,7 @@ func (log Logger) LoadConfiguration(filename string) {
 		case "socket":
 			filt, good = xmlToSocketLogWriter(filename, xmlfilt.Property, enabled)
 		case "http":
-			filt, good = xmlToHttpLogWriter(filename, xmlfilt.Property, enabled)
+			filt, good = xmlToHTTPLogWriter(filename, xmlfilt.Property, enabled)
 		default:
 			fmt.Fprintf(os.Stderr, "LoadConfiguration: Error: Could not load XML configuration in %s: unknown filter type \"%s\"\n", filename, xmlfilt.Type)
 			os.Exit(1)
@@ -305,7 +302,7 @@ func xmlToSocketLogWriter(filename string, props []xmlProperty, enabled bool) (*
 	return NewSocketLogWriter(protocol, endpoint), true
 }
 
-func xmlToHttpLogWriter(filename string, props []xmlProperty, enabled bool) (*HttpLogWriter, bool) {
+func xmlToHTTPLogWriter(filename string, props []xmlProperty, enabled bool) (*HTTPLogWriter, bool) {
 	url := ""
 	headers := make(map[string]interface{})
 	procnum := 0
@@ -345,5 +342,5 @@ func xmlToHttpLogWriter(filename string, props []xmlProperty, enabled bool) (*Ht
 		return nil, true
 	}
 
-	return NewHttpLogWriter(url, headers, procnum), true
+	return NewHTTPLogWriter(url, headers, procnum), true
 }

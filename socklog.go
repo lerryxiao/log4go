@@ -1,5 +1,3 @@
-// Copyright (C) 2010, Kyle Lemons <kyle@kylelemons.net>.  All rights reserved.
-
 package log4go
 
 import (
@@ -9,22 +7,25 @@ import (
 	"os"
 )
 
-// This log writer sends output to a socket
+// SocketLogWriter This log writer sends output to a socket
 type SocketLogWriter struct {
 	rec  chan *LogRecord
 	stop chan bool
 }
 
-// This is the SocketLogWriter's output method
+// LogWrite This is the SocketLogWriter's output method
 func (w *SocketLogWriter) LogWrite(rec *LogRecord) {
 	w.rec <- rec
 }
 
+// Close 关闭
 func (w *SocketLogWriter) Close() {
-	close(w.rec)
+	w.stop <- true
 	<-w.stop
+	close(w.rec)
 }
 
+// NewSocketLogWriter 新建socket log writer
 func NewSocketLogWriter(proto, hostport string) *SocketLogWriter {
 	sock, err := net.Dial(proto, hostport)
 	if err != nil {
@@ -38,6 +39,12 @@ func NewSocketLogWriter(proto, hostport string) *SocketLogWriter {
 	}
 
 	go func() {
+		defer func() {
+			if sock != nil && proto == "tcp" {
+				sock.Close()
+			}
+			w.stop <- true
+		}()
 		for {
 			select {
 			case <-w.stop:
@@ -55,22 +62,18 @@ func NewSocketLogWriter(proto, hostport string) *SocketLogWriter {
 					// Marshall into JSON
 					js, err := json.Marshal(rec)
 					if err != nil {
-						fmt.Fprint(os.Stderr, "SocketLogWriter(%q): %s", hostport, err)
+						fmt.Fprintf(os.Stderr, "SocketLogWriter(%v): %v", hostport, err)
 						return
 					}
 					_, err = sock.Write(js)
 					if err != nil {
-						fmt.Fprint(os.Stderr, "SocketLogWriter(%q): %s", hostport, err)
+						fmt.Fprintf(os.Stderr, "SocketLogWriter(%v): %v", hostport, err)
 						return
 					}
 				}
 			}
 		}
 	EXIT:
-		if sock != nil && proto == "tcp" {
-			sock.Close()
-		}
-		w.stop <- true
 	}()
 
 	return w

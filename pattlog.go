@@ -1,5 +1,3 @@
-// Copyright (C) 2010, Kyle Lemons <kyle@kylelemons.net>.  All rights reserved.
-
 package log4go
 
 import (
@@ -9,10 +7,11 @@ import (
 	"os"
 )
 
+// 常量定义
 const (
-	FORMAT_DEFAULT = "[%D %T] [%L] (%S) %M"
-	FORMAT_SHORT   = "[%t %d] [%L] %M"
-	FORMAT_ABBREV  = "[%L] %M"
+	FormatDefault = "[%D %T] [%L] (%S) %M"
+	FormatShort   = "[%t %d] [%L] %M"
+	FormatAbbrev  = "[%L] %M"
 )
 
 type formatCacheType struct {
@@ -22,9 +21,11 @@ type formatCacheType struct {
 	runnableID, processID string
 }
 
-var formatCache = &formatCacheType{}
+var (
+	formatCache = &formatCacheType{}
+)
 
-// Known format codes:
+// FormatLogRecord Known format codes:
 // %T - Time (15:04:05 MST)
 // %t - Time (15:04)
 // %D - Date (2006-01-02)
@@ -106,13 +107,13 @@ func FormatLogRecord(format string, rec *LogRecord) string {
 	return out.String()
 }
 
-// This is the standard writer that prints to standard output.
+// FormatLogWriter This is the standard writer that prints to standard output.
 type FormatLogWriter struct {
 	rec  chan *LogRecord
 	stop chan bool
 }
 
-// This creates a new FormatLogWriter
+// NewFormatLogWriter This creates a new FormatLogWriter
 func NewFormatLogWriter(out io.Writer, format string) *FormatLogWriter {
 	w := &FormatLogWriter{
 		rec:  make(chan *LogRecord, LogBufferLength),
@@ -124,16 +125,27 @@ func NewFormatLogWriter(out io.Writer, format string) *FormatLogWriter {
 			w.stop <- true
 		}()
 
-		for rec := range w.rec {
-			fmt.Fprint(out, FormatLogRecord(format, rec))
+		for {
+			select {
+			case <-w.stop:
+				{
+					goto EXIT
+				}
+			case rec, ok := <-w.rec:
+				{
+					if ok == true {
+						fmt.Fprint(out, FormatLogRecord(format, rec))
+					}
+				}
+			}
 		}
+	EXIT:
 	}()
 
 	return w
 }
 
-// This is the FormatLogWriter's output method.  This will block if the output
-// buffer is full.
+// LogWrite This is the FormatLogWriter's output method.  This will block if the output buffer is full.
 func (w *FormatLogWriter) LogWrite(rec *LogRecord) {
 	w.rec <- rec
 }
@@ -141,6 +153,7 @@ func (w *FormatLogWriter) LogWrite(rec *LogRecord) {
 // Close stops the logger from sending messages to standard output.  Attempts to
 // send log messages to this logger after a Close have undefined behavior.
 func (w *FormatLogWriter) Close() {
-	close(w.rec)
+	w.stop <- true
 	<-w.stop
+	close(w.rec)
 }

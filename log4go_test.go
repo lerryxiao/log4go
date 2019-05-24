@@ -1,5 +1,3 @@
-// Copyright (C) 2010, Kyle Lemons <kyle@kylelemons.net>.  All rights reserved.
-
 package log4go
 
 import (
@@ -14,9 +12,13 @@ import (
 	"time"
 )
 
-const testLogFile = "_logtest.log"
+const (
+	testLogFile = "_logtest.log"
+)
 
-var now time.Time = time.Unix(0, 1234567890123456789).In(time.UTC)
+var (
+	now  = time.Unix(0, 1234567890123456789).In(time.UTC)
+)
 
 func newLogRecord(lvl level, src string, msg string) *LogRecord {
 	return &LogRecord{
@@ -28,7 +30,7 @@ func newLogRecord(lvl level, src string, msg string) *LogRecord {
 }
 
 func TestELog(t *testing.T) {
-	fmt.Printf("Testing %s\n", L4G_VERSION)
+	fmt.Printf("Testing %s\n", L4GVersion)
 	lr := newLogRecord(FATAL, "source", "message")
 	if lr.Level != FATAL {
 		t.Errorf("Incorrect level: %d should be %d", lr.Level, FATAL)
@@ -56,9 +58,9 @@ var formatTests = []struct {
 		},
 		Formats: map[string]string{
 			// TODO(kevlar): How can I do this so it'll work outside of PST?
-			FORMAT_DEFAULT: "[2009-02-13 23:31:30:123] [error] (source) message\n",
-			FORMAT_SHORT:   "[23:31 02/13/09] [error] message\n",
-			FORMAT_ABBREV:  "[error] message\n",
+			FormatDefault: "[2009-02-13 23:31:30:123] [error] (source) message\n",
+			FormatShort:   "[23:31 02/13/09] [error] message\n",
+			FormatAbbrev:  "[error] message\n",
 		},
 	},
 }
@@ -329,17 +331,17 @@ func TestXMLConfig(t *testing.T) {
 	fmt.Fprintln(fd, "    <level>FINEST</level>")
 	fmt.Fprintln(fd, "    <property name=\"filename\">test.log</property>")
 	fmt.Fprintln(fd, "    <!--")
-	fmt.Fprintln(fd, "       %T - Time (15:04:05 MST)")
-	fmt.Fprintln(fd, "       %t - Time (15:04)")
+	//fmt.Fprintln(fd, "       %T - Time (15:04:05 MST)")
+	//fmt.Fprintln(fd, "       %t - Time (15:04)")
 	fmt.Fprintln(fd, "       %D - Date (2006/01/02)")
-	fmt.Fprintln(fd, "       %d - Date (01/02/06)")
+	//fmt.Fprintln(fd, "       %d - Date (01/02/06)")
 	fmt.Fprintln(fd, "       %L - Level (FNST, FINE, DEBG, TRAC, WARN, EROR, CRIT)")
 	fmt.Fprintln(fd, "       %S - Source")
 	fmt.Fprintln(fd, "       %M - Message")
 	fmt.Fprintln(fd, "       It ignores unknown format strings (and removes them)")
-	fmt.Fprintln(fd, "       Recommended: \"[%D %T] [%L] (%S) %M\"")
+	//fmt.Fprintln(fd, "       Recommended: \"[%D %T] [%L] (%S) %M\"")
 	fmt.Fprintln(fd, "    -->")
-	fmt.Fprintln(fd, "    <property name=\"format\">[%D %T] [%L] (%S) %M</property>")
+	//fmt.Fprintln(fd, "    <property name=\"format\">[%D %T] [%L] (%S) %M</property>")
 	fmt.Fprintln(fd, "    <property name=\"rotate\">false</property> <!-- true enables log rotation, otherwise append -->")
 	fmt.Fprintln(fd, "    <property name=\"maxsize\">0M</property> <!-- \\d+[KMG]? Suffixes are in terms of 2**10 -->")
 	fmt.Fprintln(fd, "    <property name=\"maxlines\">0K</property> <!-- \\d+[KMG]? Suffixes are in terms of thousands -->")
@@ -434,9 +436,9 @@ func BenchmarkFormatLogRecord(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		rec.Created = rec.Created.Add(1 * time.Second / updateEvery)
 		if i%2 == 0 {
-			FormatLogRecord(FORMAT_DEFAULT, rec)
+			FormatLogRecord(FormatDefault, rec)
 		} else {
-			FormatLogRecord(FORMAT_SHORT, rec)
+			FormatLogRecord(FormatShort, rec)
 		}
 	}
 }
@@ -450,9 +452,8 @@ func BenchmarkConsoleLog(b *testing.B) {
 	if err := syscall.Dup2(int(sink.Fd()), syscall.Stdout); err != nil {
 		panic(err)
 	}
-	*/
-
 	stdout = ioutil.Discard
+	*/
 	sl := NewDefaultLogger(INFO)
 	for i := 0; i < b.N; i++ {
 		sl.Log(WARNING, "here", "This is a log message")
