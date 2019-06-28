@@ -232,28 +232,28 @@ func (log Logger) LogCmm(nerr bool, lvl level, arg0 interface{}, args ...interfa
 }
 
 // Finest logs
-func (log Logger) Finest(arg0 interface{}, args ...interface{}) {
-	log.LogCmm(false, FINEST, arg0, args...)
+func (log Logger) Finest(arg0 interface{}, args ...interface{}) error {
+	return log.LogCmm(false, FINEST, arg0, args...)
 }
 
 // Fine logs
-func (log Logger) Fine(arg0 interface{}, args ...interface{}) {
-	log.LogCmm(false, FINE, arg0, args...)
+func (log Logger) Fine(arg0 interface{}, args ...interface{}) error {
+	return log.LogCmm(false, FINE, arg0, args...)
 }
 
 // Debug logs
-func (log Logger) Debug(arg0 interface{}, args ...interface{}) {
-	log.LogCmm(false, DEBUG, arg0, args...)
+func (log Logger) Debug(arg0 interface{}, args ...interface{}) error {
+	return log.LogCmm(false, DEBUG, arg0, args...)
 }
 
 // Trace logs
-func (log Logger) Trace(arg0 interface{}, args ...interface{}) {
-	log.LogCmm(false, TRACE, arg0, args...)
+func (log Logger) Trace(arg0 interface{}, args ...interface{}) error {
+	return log.LogCmm(false, TRACE, arg0, args...)
 }
 
 // Info logs
-func (log Logger) Info(arg0 interface{}, args ...interface{}) {
-	log.LogCmm(false, INFO, arg0, args...)
+func (log Logger) Info(arg0 interface{}, args ...interface{}) error {
+	return log.LogCmm(false, INFO, arg0, args...)
 }
 
 // Warn logs
@@ -272,8 +272,8 @@ func (log Logger) Fatal(arg0 interface{}, args ...interface{}) error {
 }
 
 // Report logs
-func (log Logger) Report(arg0 interface{}, args ...interface{}) {
-	log.LogCmm(false, REPORT, arg0, args...)
+func (log Logger) Report(arg0 interface{}, args ...interface{}) error {
+	return log.LogCmm(false, REPORT, arg0, args...)
 }
 
 // ReportAPI Report Log by url
