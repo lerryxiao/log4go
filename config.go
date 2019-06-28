@@ -49,10 +49,6 @@ func getLevel(lvl string) level {
 	}
 }
 
-func getTag(tag string) uint8 {
-
-}
-
 // LoadConfiguration Load XML configuration; see examples/example.xml for documentation
 func (log Logger) LoadConfiguration(filename string) {
 	log.Close()
