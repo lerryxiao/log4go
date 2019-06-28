@@ -10,13 +10,13 @@ var (
 	stdout = os.Stdout
 )
 
-// ConsoleLogWriter This is the standard writer that prints to standard output.
+// ConsoleLogWriter 控制台日志输出
 type ConsoleLogWriter struct {
 	rec  chan *LogRecord
 	stop chan bool
 }
 
-// NewConsoleLogWriter This creates a new ConsoleLogWriter
+// NewConsoleLogWriter 创建控制台日志输出
 func NewConsoleLogWriter() *ConsoleLogWriter {
 	w := &ConsoleLogWriter{
 		rec:  make(chan *LogRecord, LogBufferLength),
@@ -58,15 +58,19 @@ func (w ConsoleLogWriter) run(out io.Writer) {
 EXIT:
 }
 
-// LogWrite This is the ConsoleLogWriter's output method.  This will block if the output buffer is full.
+// LogWrite 日志输出
 func (w *ConsoleLogWriter) LogWrite(rec *LogRecord) {
 	w.rec <- rec
 }
 
-// Close stops the logger from sending messages to standard output.  Attempts to
-// send log messages to this logger after a Close have undefined behavior.
+// Close 关闭
 func (w *ConsoleLogWriter) Close() {
 	w.stop <- true
 	<-w.stop
 	close(w.rec)
+}
+
+// xmlToConsoleLogWriter xml创建控制台日志输出
+func xmlToConsoleLogWriter(filename string, props []xmlProperty) (*ConsoleLogWriter, bool) {
+	return NewConsoleLogWriter(), true
 }

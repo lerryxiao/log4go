@@ -4,11 +4,12 @@ import (
 	"bytes"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 )
 
-// FileLogWriter This log writer sends output to a file dir a
+// FileLogWriter 文件日志输出
 type FileLogWriter struct {
 	rec  chan *LogRecord
 	rot  chan bool
@@ -42,7 +43,7 @@ type FileLogWriter struct {
 	rotate bool
 }
 
-// LogWrite This is the FileLogWriter's output method
+// LogWrite 输出方法
 func (w *FileLogWriter) LogWrite(rec *LogRecord) {
 	w.rec <- rec
 }
@@ -54,12 +55,7 @@ func (w *FileLogWriter) Close() {
 	close(w.rec)
 }
 
-// NewFileLogWriter creates a new LogWriter which writes to the given file and has rotation enabled if rotate is true.
-//
-// If rotate is true, any time a new log file is opened, the old one is renamed with a .### extension to preserve it.
-// The various Set* methods can be used to configure log rotation based on lines, size, and daily.
-//
-// The standard log-line format is: [%D %T] [%L] (%S) %M
+// NewFileLogWriter 创建文件输出节点
 func NewFileLogWriter(dir, fname string, rotate bool) *FileLogWriter {
 	w := &FileLogWriter{
 		rec:            make(chan *LogRecord, LogBufferLength),
@@ -146,12 +142,12 @@ func NewFileLogWriter(dir, fname string, rotate bool) *FileLogWriter {
 	return w
 }
 
-// Rotate Request that the logs rotate
+// Rotate 设置转存
 func (w *FileLogWriter) Rotate() {
 	w.rot <- true
 }
 
-// If this is called in a threaded context, it MUST be synchronized
+// 开始转存
 func (w *FileLogWriter) intRotate() error {
 	// Close any log file that may be open
 	if w.file != nil {
@@ -216,16 +212,13 @@ func (w *FileLogWriter) intRotate() error {
 	return nil
 }
 
-// SetFormat Set the logging format (chainable).  Must be called before the first log
-// message is written.
+// SetFormat 设置输出格式
 func (w *FileLogWriter) SetFormat(format string) *FileLogWriter {
 	w.format = format
 	return w
 }
 
-// SetHeadFoot Set the logfile header and footer (chainable).  Must be called before the first log
-// message is written.  These are formatted similar to the FormatLogRecord (e.g.
-// you can use %D and %T in your header/footer for date and time).
+// SetHeadFoot 设置文件头信息
 func (w *FileLogWriter) SetHeadFoot(head, foot string) *FileLogWriter {
 	w.header, w.trailer = head, foot
 	if w.maxlinesCurlines == 0 {
@@ -234,38 +227,104 @@ func (w *FileLogWriter) SetHeadFoot(head, foot string) *FileLogWriter {
 	return w
 }
 
-// SetRotateLines Set rotate at linecount (chainable). Must be called before the first log  message is written.
+// SetRotateLines 设置转存行数量阀值
 func (w *FileLogWriter) SetRotateLines(maxlines int) *FileLogWriter {
 	//fmt.Fprintf(os.Stderr, "FileLogWriter.SetRotateLines: %v\n", maxlines)
 	w.maxlines = maxlines
 	return w
 }
 
-// SetRotateSize Set rotate at size (chainable). Must be called before the first log message is written.
+// SetRotateSize 设置转存大小阀值
 func (w *FileLogWriter) SetRotateSize(maxsize int) *FileLogWriter {
 	//fmt.Fprintf(os.Stderr, "FileLogWriter.SetRotateSize: %v\n", maxsize)
 	w.maxsize = maxsize
 	return w
 }
 
-// SetRotateDaily Set rotate daily (chainable). Must be called before the first log message is written.
+// SetRotateDaily 设置每天转存
 func (w *FileLogWriter) SetRotateDaily(daily bool) *FileLogWriter {
 	//fmt.Fprintf(os.Stderr, "FileLogWriter.SetRotateDaily: %v\n", daily)
 	w.daily = daily
 	return w
 }
 
-// SetRotate changes whether or not the old logs are kept. (chainable) Must be
-// called before the first log message is written.  If rotate is false, the
-// files are overwritten; otherwise, they are rotated to another file before the new log is opened.
+// SetRotate 设置已转存
 func (w *FileLogWriter) SetRotate(rotate bool) *FileLogWriter {
 	//fmt.Fprintf(os.Stderr, "FileLogWriter.SetRotate: %v\n", rotate)
 	w.rotate = rotate
 	return w
 }
 
-// NewXMLLogWriter is a utility method for creating a FileLogWriter set up to
-// output XML record log messages instead of line-based ones.
+// Parse a number with K/M/G suffixes based on thousands (1000) or 2^10 (1024)
+func strToNumSuffix(str string, mult int) int {
+	num := 1
+	if len(str) > 1 {
+		switch str[len(str)-1] {
+		case 'G', 'g':
+			num *= mult
+			fallthrough
+		case 'M', 'm':
+			num *= mult
+			fallthrough
+		case 'K', 'k':
+			num *= mult
+			str = str[0 : len(str)-1]
+		}
+	}
+	parsed, _ := strconv.Atoi(str)
+	return parsed * num
+}
+
+// xmlToFileLogWriter xml创建文件日志输出
+func xmlToFileLogWriter(filename string, props []xmlProperty) (*FileLogWriter, bool) {
+	file := ""
+	format := "[%D %T] [%L] (%S) %M"
+	maxlines := 0
+	maxsize := 0
+	daily := false
+	rotate := false
+	dir := ""
+
+	// Parse properties
+	for _, prop := range props {
+		switch prop.Name {
+		case "filename":
+			file = strings.Trim(prop.Value, " \r\n")
+		case "format":
+			format = strings.Trim(prop.Value, " \r\n")
+		case "maxlines":
+			maxlines = strToNumSuffix(strings.Trim(prop.Value, " \r\n"), 1000)
+		case "maxsize":
+			maxsize = strToNumSuffix(strings.Trim(prop.Value, " \r\n"), 1024)
+		case "daily":
+			daily = strings.Trim(prop.Value, " \r\n") != "false"
+		case "dir":
+			dir = strings.Trim(prop.Value, " \r\n")
+			if !strings.HasSuffix(dir, "/") {
+				dir += "/"
+			}
+		case "rotate":
+			rotate = strings.Trim(prop.Value, " \r\n") != "false"
+		default:
+			fmt.Fprintf(os.Stderr, "LoadConfiguration: Warning: Unknown property \"%s\" for file filter in %s\n", prop.Name, filename)
+		}
+	}
+
+	// Check properties
+	if len(file) == 0 {
+		fmt.Fprintf(os.Stderr, "LoadConfiguration: Error: Required property \"%s\" for file filter missing in %s\n", "filename", filename)
+		return nil, false
+	}
+
+	flw := NewFileLogWriter(dir, file, rotate)
+	flw.SetFormat(format)
+	flw.SetRotateLines(maxlines)
+	flw.SetRotateSize(maxsize)
+	flw.SetRotateDaily(daily)
+	return flw, true
+}
+
+// NewXMLLogWriter 创建xml日志输出
 func NewXMLLogWriter(dir, fname string, rotate bool) *FileLogWriter {
 	return NewFileLogWriter(dir, fname, rotate).SetFormat(
 		`	<record level="%L">
@@ -273,4 +332,49 @@ func NewXMLLogWriter(dir, fname string, rotate bool) *FileLogWriter {
 		<source>%S</source>
 		<message>%M</message>
 	</record>`).SetHeadFoot("<log created=\"%D %T\">", "</log>")
+}
+
+// xmlToXMLLogWriter xml创建xml日志输出
+func xmlToXMLLogWriter(filename string, props []xmlProperty) (*FileLogWriter, bool) {
+	file := ""
+	maxrecords := 0
+	maxsize := 0
+	daily := false
+	rotate := false
+	dir := ""
+
+	// Parse properties
+	for _, prop := range props {
+		switch prop.Name {
+		case "filename":
+			file = strings.Trim(prop.Value, " \r\n")
+		case "maxrecords":
+			maxrecords = strToNumSuffix(strings.Trim(prop.Value, " \r\n"), 1000)
+		case "maxsize":
+			maxsize = strToNumSuffix(strings.Trim(prop.Value, " \r\n"), 1024)
+		case "daily":
+			daily = strings.Trim(prop.Value, " \r\n") != "false"
+		case "dir":
+			dir = strings.Trim(prop.Value, " \r\n")
+			if !strings.HasSuffix(dir, "/") {
+				dir += "/"
+			}
+		case "rotate":
+			rotate = strings.Trim(prop.Value, " \r\n") != "false"
+		default:
+			fmt.Fprintf(os.Stderr, "LoadConfiguration: Warning: Unknown property \"%s\" for xml filter in %s\n", prop.Name, filename)
+		}
+	}
+
+	// Check properties
+	if len(file) == 0 {
+		fmt.Fprintf(os.Stderr, "LoadConfiguration: Error: Required property \"%s\" for xml filter missing in %s\n", "filename", filename)
+		return nil, false
+	}
+
+	xlw := NewXMLLogWriter(dir, file, rotate)
+	xlw.SetRotateLines(maxrecords)
+	xlw.SetRotateSize(maxsize)
+	xlw.SetRotateDaily(daily)
+	return xlw, true
 }

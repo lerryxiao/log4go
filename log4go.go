@@ -1,11 +1,6 @@
 package log4go
 
 import (
-	"errors"
-	"fmt"
-	"os"
-	"runtime"
-	"strings"
 	"time"
 )
 
@@ -15,16 +10,16 @@ const (
 	L4GMajor   = 3
 	L4GMinor   = 0
 	L4GBuild   = 1
+
+	LogBufferLength = 32 // logger can buffer at a time before writing them.
 )
 
-/****** Constants ******/
-
-// These are the integer logging levels used by the logger
-type level int
+type level uint8
 
 // level 定义
 const (
-	FINEST level = iota
+	_ level = iota
+	FINEST
 	FINE
 	DEBUG
 	TRACE
@@ -33,26 +28,6 @@ const (
 	ERROR
 	FATAL
 	REPORT
-)
-
-// Logging level strings
-var (
-	levelStrings = [...]string{"fnst", "fine", "debug", "trace", "info", "warning", "error", "fatal", "report"}
-)
-
-// String 字符串输出
-func (l level) String() string {
-	if l < 0 || int(l) > len(levelStrings) {
-		return "UNKNOWN"
-	}
-	return levelStrings[int(l)]
-}
-
-/****** Variables ******/
-var (
-	// LogBufferLength specifies how many log messages a particular log4go
-	// logger can buffer at a time before writing them.
-	LogBufferLength = 32
 )
 
 // 扩展定义
@@ -64,7 +39,10 @@ const (
 	EXUrlHeadBody
 )
 
-/****** LogRecord ******/
+// Logging level strings
+var (
+	levelStrings = []string{"fnst", "fine", "debug", "trace", "info", "warning", "error", "fatal", "report"}
+)
 
 // A LogRecord contains all of the pertinent information for each message
 type LogRecord struct {
@@ -75,337 +53,17 @@ type LogRecord struct {
 	Extend  []interface{}
 }
 
-// SetExtend 设置扩展
-func (record LogRecord) SetExtend(tp uint8, data []interface{}) {
-	record.Extend = make([]interface{}, len(data)+1)
-	record.Extend[0] = tp
-	for index, info := range data {
-		record.Extend[index+1] = info
-	}
-}
-
-// GetExtend 获取扩展
-func (record LogRecord) GetExtend() (tp uint8, data []interface{}) {
-	tp = EXNone
-	data = nil
-	elen := len(record.Extend)
-	if elen > 0 {
-		tp = record.Extend[0].(uint8)
-		if elen > 1 {
-			data = record.Extend[1:]
-		}
-	}
-	return
-}
-
-/****** LogWriter ******/
-
-// LogWriter This is an interface for anything that should be able to write logs
+// LogWriter 日志输出器
 type LogWriter interface {
-	// This will be called to log a LogRecord message.
 	LogWrite(rec *LogRecord)
-
-	// This should clean up anything lingering about the LogWriter, as it is called before
-	// the LogWriter is removed.  LogWrite should not be called after Close.
 	Close()
 }
 
-/****** Logger ******/
-
-// A Filter represents the log level below which no log records are written to
-// the associated LogWriter.
+// Filter 日志过滤器
 type Filter struct {
 	Level level
 	LogWriter
 }
 
-// A Logger represents a collection of Filters through which log messages are
-// written.
+// Logger 日志过滤器组合
 type Logger map[string]*Filter
-
-// NewLogger Create a new logger.
-// Use make(Logger) instead.
-func NewLogger() Logger {
-	return make(Logger)
-}
-
-// NewConsoleLogger Create a new logger with a "stdout" filter configured to send log messages at
-// or above lvl to standard output.
-// use NewDefaultLogger instead.
-func NewConsoleLogger(lvl level) Logger {
-	return Logger{
-		"stdout": &Filter{lvl, NewConsoleLogWriter()},
-	}
-}
-
-// NewDefaultLogger Create a new logger with a "stdout" filter configured to send log messages at
-// or above lvl to standard output.
-func NewDefaultLogger(lvl level) Logger {
-	return Logger{
-		"stdout": &Filter{lvl, NewConsoleLogWriter()},
-	}
-}
-
-// Close Closes all log writers in preparation for exiting the program or a
-// reconfiguration of logging.  Calling this is not really imperative, unless
-// you want to guarantee that all log messages are written.  Close removes
-// all filters (and thus all LogWriters) from the logger.
-func (log Logger) Close() {
-	// Close all open loggers
-	for name, filt := range log {
-		filt.Close()
-		delete(log, name)
-	}
-}
-
-// AddFilter Add a new LogWriter to the Logger which will only log messages at lvl or
-// higher.  This function should not be called from multiple goroutines.
-// Returns the logger for chaining.
-func (log Logger) AddFilter(name string, lvl level, writer LogWriter) Logger {
-	log[name] = &Filter{lvl, writer}
-	return log
-}
-
-// check skip
-func (log Logger) checkSkip(lvl level) bool {
-	// Determine if any logging will be done
-	for _, filt := range log {
-		if lvl >= filt.Level {
-			return false
-		}
-	}
-	return true
-}
-
-// dispatch log
-func (log Logger) dispatchLog(rec *LogRecord) {
-	if rec != nil {
-		eqrep := (rec.Level == REPORT)
-		for _, filt := range log {
-			if (eqrep == true && rec.Level == filt.Level) ||
-				(eqrep == false && rec.Level >= filt.Level && filt.Level != REPORT) {
-				filt.LogWrite(rec)
-			}
-		}
-	}
-}
-
-/******* Logging *******/
-func getRunCaller(skip int) string {
-	pc, _, lineno, ok := runtime.Caller(skip + 1)
-	if ok {
-		return fmt.Sprintf("%s:%d", runtime.FuncForPC(pc).Name(), lineno)
-	}
-	return ""
-}
-
-// Send a formatted log message internally
-func (log Logger) intLogf(skip int, lvl level, format string, args ...interface{}) {
-	// check skip
-	if log.checkSkip(lvl) == true {
-		return
-	}
-
-	msg := format
-	if len(args) > 0 {
-		msg = fmt.Sprintf(format, args...)
-	}
-
-	//dispatch log
-	log.dispatchLog(&LogRecord{
-		Level:   lvl,
-		Created: time.Now(),
-		Source:  getRunCaller(skip + 1),
-		Message: msg,
-	})
-}
-
-// Send a closure log message internally
-func (log Logger) intLogc(skip int, lvl level, closure func() string) {
-	// check skip
-	if log.checkSkip(lvl) == true {
-		return
-	}
-
-	// dispatch log
-	log.dispatchLog(&LogRecord{
-		Level:   lvl,
-		Created: time.Now(),
-		Source:  getRunCaller(skip + 1),
-		Message: closure(),
-	})
-}
-
-// Log Send a log message with manual level, source, and message.
-func (log Logger) Log(lvl level, source, message string) {
-	// check skip
-	if log.checkSkip(lvl) == true {
-		return
-	}
-
-	// dispatch log
-	log.dispatchLog(&LogRecord{
-		Level:   lvl,
-		Created: time.Now(),
-		Source:  source,
-		Message: message,
-	})
-}
-
-// Logf logs a formatted log message at the given log level, using the caller as
-// its source.
-func (log Logger) Logf(lvl level, format string, args ...interface{}) {
-	log.intLogf(1, lvl, format, args...)
-}
-
-// Logc logs a string returned by the closure at the given log level, using the caller as
-// its source.  If no log message would be written, the closure is never called.
-func (log Logger) Logc(lvl level, closure func() string) {
-	log.intLogc(1, lvl, closure)
-}
-
-// LogReport 上报
-func (log Logger) LogReport(skip int, lvl level, url string, header interface{}, body string) {
-	// check skip
-	if log.checkSkip(lvl) == true {
-		return
-	}
-
-	nurl := len(url) <= 0
-	nhead := header == nil
-	nbody := len(body) <= 0
-
-	var extend []interface{}
-	if nurl == false && nhead == false && nbody == false {
-		extend = []interface{}{
-			EXUrlHeadBody,
-			url,
-			header,
-			body,
-		}
-	} else if nurl == false && nhead == false {
-		extend = []interface{}{
-			EXUrlHead,
-			url,
-			header,
-		}
-	} else if nurl == false && nbody == false {
-		extend = []interface{}{
-			EXUrlBody,
-			url,
-			body,
-		}
-	} else if nurl == false {
-		extend = []interface{}{
-			EXUrl,
-			url,
-		}
-	} else {
-		fmt.Fprintf(os.Stderr, "LogReport extend is nil, url: %s", url)
-		return
-	}
-
-	// dispatch log
-	log.dispatchLog(&LogRecord{
-		Level:   lvl,
-		Created: time.Now(),
-		Extend:  extend,
-		Source:  getRunCaller(skip + 1),
-	})
-}
-
-// LogCmm comm func
-// nerr means whether need return error
-// level means log level
-// The behavior of Debug depends on the first argument:
-// - arg0 is a string
-//   When given a string as the first argument, this behaves like Logf but with
-//   the DEBUG log level: the first argument is interpreted as a format for the
-//   latter arguments.
-// - arg0 is a func()string
-//   When given a closure of type func()string, this logs the string returned by
-//   the closure iff it will be logged.  The closure runs at most one time.
-// - arg0 is interface{}
-//   When given anything else, the log message will be each of the arguments
-//   formatted with %v and separated by spaces (ala Sprint).
-func (log Logger) LogCmm(nerr bool, lvl level, arg0 interface{}, args ...interface{}) error {
-	if nerr == false {
-		switch first := arg0.(type) {
-		case string:
-			// Use the string as a format string
-			log.intLogf(2, lvl, first, args...)
-		case func() string:
-			// Log the closure (no other arguments used)
-			log.intLogc(2, lvl, first)
-		default:
-			// Build a format string so that it will be similar to Sprint
-			log.intLogf(2, lvl, fmt.Sprint(arg0)+strings.Repeat(" %v", len(args)), args...)
-		}
-	} else {
-		var msg string
-		switch first := arg0.(type) {
-		case string:
-			// Use the string as a format string
-			msg = fmt.Sprintf(first, args...)
-		case func() string:
-			// Log the closure (no other arguments used)
-			msg = first()
-		default:
-			// Build a format string so that it will be similar to Sprint
-			msg = fmt.Sprintf(fmt.Sprint(arg0)+strings.Repeat(" %v", len(args)), args...)
-		}
-		log.intLogf(2, lvl, msg)
-		return errors.New(msg)
-	}
-	return nil
-}
-
-// Finest logs
-func (log Logger) Finest(arg0 interface{}, args ...interface{}) {
-	log.LogCmm(false, FINEST, arg0, args...)
-}
-
-// Fine logs
-func (log Logger) Fine(arg0 interface{}, args ...interface{}) {
-	log.LogCmm(false, FINE, arg0, args...)
-}
-
-// Debug logs
-func (log Logger) Debug(arg0 interface{}, args ...interface{}) {
-	log.LogCmm(false, DEBUG, arg0, args...)
-}
-
-// Trace logs
-func (log Logger) Trace(arg0 interface{}, args ...interface{}) {
-	log.LogCmm(false, TRACE, arg0, args...)
-}
-
-// Info logs
-func (log Logger) Info(arg0 interface{}, args ...interface{}) {
-	log.LogCmm(false, INFO, arg0, args...)
-}
-
-// Warn logs
-func (log Logger) Warn(arg0 interface{}, args ...interface{}) error {
-	return log.LogCmm(true, WARNING, arg0, args...)
-}
-
-// Error logs
-func (log Logger) Error(arg0 interface{}, args ...interface{}) error {
-	return log.LogCmm(true, ERROR, arg0, args...)
-}
-
-// Fatal logs
-func (log Logger) Fatal(arg0 interface{}, args ...interface{}) error {
-	return log.LogCmm(true, FATAL, arg0, args...)
-}
-
-// Report logs
-func (log Logger) Report(arg0 interface{}, args ...interface{}) {
-	log.LogCmm(false, REPORT, arg0, args...)
-}
-
-// ReportAPI Report Log by url
-func (log Logger) ReportAPI(url string, header interface{}, body string) {
-	log.LogReport(1, REPORT, url, header, body)
-}

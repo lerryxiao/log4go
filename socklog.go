@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"strings"
 )
 
 // SocketLogWriter This log writer sends output to a socket
@@ -77,4 +78,30 @@ func NewSocketLogWriter(proto, hostport string) *SocketLogWriter {
 	}()
 
 	return w
+}
+
+// xmlToSocketLogWriter xml创建流日志输出
+func xmlToSocketLogWriter(filename string, props []xmlProperty) (*SocketLogWriter, bool) {
+	endpoint := ""
+	protocol := "udp"
+
+	// Parse properties
+	for _, prop := range props {
+		switch prop.Name {
+		case "endpoint":
+			endpoint = strings.Trim(prop.Value, " \r\n")
+		case "protocol":
+			protocol = strings.Trim(prop.Value, " \r\n")
+		default:
+			fmt.Fprintf(os.Stderr, "LoadConfiguration: Warning: Unknown property \"%s\" for file filter in %s\n", prop.Name, filename)
+		}
+	}
+
+	// Check properties
+	if len(endpoint) == 0 {
+		fmt.Fprintf(os.Stderr, "LoadConfiguration: Error: Required property \"%s\" for file filter missing in %s\n", "endpoint", filename)
+		return nil, false
+	}
+
+	return NewSocketLogWriter(protocol, endpoint), true
 }

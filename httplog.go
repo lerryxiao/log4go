@@ -7,6 +7,8 @@ import (
 	"math/rand"
 	"net/http"
 	"os"
+	"strconv"
+	"strings"
 	"time"
 )
 
@@ -253,4 +255,43 @@ func (w *HTTPLogWriter) Close() {
 			w.procs[index] = nil
 		}
 	}
+}
+
+// xmlToHTTPLogWriter xml创建http日志输出
+func xmlToHTTPLogWriter(filename string, props []xmlProperty) (*HTTPLogWriter, bool) {
+	url := ""
+	headers := make(map[string]interface{})
+	procnum := 0
+
+	// Parse properties
+	for _, prop := range props {
+		switch prop.Name {
+		case "url":
+			url = strings.Trim(prop.Value, " \r\n")
+		case "header":
+			{
+				strs := strings.Trim(prop.Value, " \r\n")
+				if len(strs) > 0 {
+					for _, tstr := range strings.Split(strs, ";") {
+						ststrs := strings.Split(tstr, ":")
+						if len(ststrs) >= 2 {
+							headers[ststrs[0]] = ststrs[1]
+						}
+					}
+				}
+			}
+		case "procnum":
+			procnum, _ = strconv.Atoi(strings.Trim(prop.Value, " \r\n"))
+		default:
+			fmt.Fprintf(os.Stderr, "LoadConfiguration: Warning: Unknown property \"%s\" for file filter in %s\n", prop.Name, filename)
+		}
+	}
+
+	// Check properties
+	if len(url) == 0 {
+		fmt.Fprintf(os.Stderr, "LoadConfiguration: Error: Required property \"%s\" for file filter missing in %s\n", "url", filename)
+		return nil, false
+	}
+
+	return NewHTTPLogWriter(url, headers, procnum), true
 }
