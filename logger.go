@@ -1,7 +1,6 @@
 package log4go
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"runtime"
@@ -205,75 +204,61 @@ func (log Logger) LogReport(skip int, lvl level, url string, header interface{},
 }
 
 // LogCmm 日志输出处理
-func (log Logger) LogCmm(nerr bool, lvl level, arg0 interface{}, args ...interface{}) error {
-	if nerr == false {
-		switch first := arg0.(type) {
-		case string:
-			log.intLogf(2, lvl, first, args...)
-		case func() string:
-			log.intLogc(2, lvl, first)
-		default:
-			log.intLogf(2, lvl, fmt.Sprint(arg0)+strings.Repeat(" %v", len(args)), args...)
-		}
-	} else {
-		var msg string
-		switch first := arg0.(type) {
-		case string:
-			msg = fmt.Sprintf(first, args...)
-		case func() string:
-			msg = first()
-		default:
-			msg = fmt.Sprintf(fmt.Sprint(arg0)+strings.Repeat(" %v", len(args)), args...)
-		}
-		log.intLogf(2, lvl, msg)
-		return errors.New(msg)
+func (log Logger) LogCmm(lvl level, arg0 interface{}, args ...interface{}) {
+	switch first := arg0.(type) {
+	case string:
+		log.intLogf(2, lvl, first, args...)
+	case func() string:
+		log.intLogc(2, lvl, first)
+	default:
+		log.intLogf(2, lvl, fmt.Sprint(arg0)+strings.Repeat(" %v", len(args)), args...)
 	}
-	return nil
+
 }
 
 // Finest logs
-func (log Logger) Finest(arg0 interface{}, args ...interface{}) error {
-	return log.LogCmm(false, FINEST, arg0, args...)
+func (log Logger) Finest(arg0 interface{}, args ...interface{}) {
+	log.LogCmm(FINEST, arg0, args...)
 }
 
 // Fine logs
-func (log Logger) Fine(arg0 interface{}, args ...interface{}) error {
-	return log.LogCmm(false, FINE, arg0, args...)
+func (log Logger) Fine(arg0 interface{}, args ...interface{}) {
+	log.LogCmm(FINE, arg0, args...)
 }
 
 // Debug logs
-func (log Logger) Debug(arg0 interface{}, args ...interface{}) error {
-	return log.LogCmm(false, DEBUG, arg0, args...)
+func (log Logger) Debug(arg0 interface{}, args ...interface{}) {
+	log.LogCmm(DEBUG, arg0, args...)
 }
 
 // Trace logs
-func (log Logger) Trace(arg0 interface{}, args ...interface{}) error {
-	return log.LogCmm(false, TRACE, arg0, args...)
+func (log Logger) Trace(arg0 interface{}, args ...interface{}) {
+	log.LogCmm(TRACE, arg0, args...)
 }
 
 // Info logs
-func (log Logger) Info(arg0 interface{}, args ...interface{}) error {
-	return log.LogCmm(false, INFO, arg0, args...)
+func (log Logger) Info(arg0 interface{}, args ...interface{}) {
+	log.LogCmm(INFO, arg0, args...)
 }
 
 // Warn logs
-func (log Logger) Warn(arg0 interface{}, args ...interface{}) error {
-	return log.LogCmm(true, WARNING, arg0, args...)
+func (log Logger) Warn(arg0 interface{}, args ...interface{}) {
+	log.LogCmm(WARNING, arg0, args...)
 }
 
 // Error logs
-func (log Logger) Error(arg0 interface{}, args ...interface{}) error {
-	return log.LogCmm(true, ERROR, arg0, args...)
+func (log Logger) Error(arg0 interface{}, args ...interface{}) {
+	log.LogCmm(ERROR, arg0, args...)
 }
 
 // Fatal logs
-func (log Logger) Fatal(arg0 interface{}, args ...interface{}) error {
-	return log.LogCmm(true, FATAL, arg0, args...)
+func (log Logger) Fatal(arg0 interface{}, args ...interface{}) {
+	log.LogCmm(FATAL, arg0, args...)
 }
 
 // Report logs
-func (log Logger) Report(arg0 interface{}, args ...interface{}) error {
-	return log.LogCmm(false, REPORT, arg0, args...)
+func (log Logger) Report(arg0 interface{}, args ...interface{}) {
+	log.LogCmm(REPORT, arg0, args...)
 }
 
 // ReportAPI Report Log by url
