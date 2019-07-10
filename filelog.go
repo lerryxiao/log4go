@@ -41,6 +41,8 @@ type FileLogWriter struct {
 
 	// Keep old logfiles (.001, .002, etc)
 	rotate bool
+
+	rptype uint8
 }
 
 // LogWrite 输出方法
@@ -53,6 +55,16 @@ func (w *FileLogWriter) Close() {
 	w.stop <- true
 	<-w.stop
 	close(w.rec)
+}
+
+// SetReportType 设置上报类型
+func (w *FileLogWriter) SetReportType(tp uint8) {
+	w.rptype = tp
+}
+
+// GetReportType 获取上报类型
+func (w *FileLogWriter) GetReportType() uint8 {
+	return w.rptype
 }
 
 // NewFileLogWriter 创建文件输出节点

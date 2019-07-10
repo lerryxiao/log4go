@@ -17,6 +17,7 @@ type xmlFilter struct {
 	Tag      string        `xml:"tag"`
 	Level    string        `xml:"level"`
 	Type     string        `xml:"type"`
+	RptType  string        `xml:"report"`
 	Property []xmlProperty `xml:"property"`
 }
 
@@ -26,24 +27,37 @@ type xmlLoggerConfig struct {
 
 func getLevel(lvl string) level {
 	switch lvl {
-	case "FINEST":
+	case "FINEST", "finest":
 		return FINEST
-	case "FINE":
+	case "FINE", "fine":
 		return FINE
-	case "DEBUG":
+	case "DEBUG", "debug":
 		return DEBUG
-	case "TRACE":
+	case "TRACE", "trace":
 		return TRACE
-	case "INFO":
+	case "INFO", "info":
 		return INFO
-	case "WARNING":
+	case "WARNING", "warning":
 		return WARNING
-	case "ERROR":
+	case "ERROR", "error":
 		return ERROR
-	case "FATAL":
+	case "FATAL", "fatal":
 		return FATAL
-	case "REPORT":
+	case "REPORT", "report":
 		return REPORT
+	default:
+		return 0
+	}
+}
+
+func getReportType(rptp string) uint8 {
+	switch rptp {
+	case "FLUME", "flume":
+		return FLUME
+	case "CAT", "cat":
+		return CAT
+	case "PROM", "prom", "PROMETHEUS", "prometheus":
+		return PROM
 	default:
 		return 0
 	}
@@ -75,6 +89,7 @@ func (log Logger) LoadConfiguration(filename string) {
 	var (
 		filt LogWriter
 		lvl  level
+		rptp uint8
 
 		bad, good, enabled = false, true, false
 	)
@@ -106,6 +121,7 @@ func (log Logger) LoadConfiguration(filename string) {
 			fmt.Fprintf(os.Stderr, "LoadConfiguration: Error: Required child <%s> for filter has unknown value in %s: %s\n", "level", filename, xmlfilt.Level)
 			bad = true
 		}
+		rptp = getReportType(xmlfilt.RptType)
 		if bad {
 			os.Exit(1)
 		}
@@ -127,6 +143,7 @@ func (log Logger) LoadConfiguration(filename string) {
 		if !good {
 			os.Exit(1)
 		}
-		log[xmlfilt.Tag] = &Filter{lvl, filt}
+		filt.SetReportType(rptp)
+		log.AddFilter(xmlfilt.Tag, filt, lvl)
 	}
 }

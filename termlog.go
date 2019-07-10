@@ -12,8 +12,9 @@ var (
 
 // ConsoleLogWriter 控制台日志输出
 type ConsoleLogWriter struct {
-	rec  chan *LogRecord
-	stop chan bool
+	rec    chan *LogRecord
+	stop   chan bool
+	rptype uint8
 }
 
 // NewConsoleLogWriter 创建控制台日志输出
@@ -68,6 +69,16 @@ func (w *ConsoleLogWriter) Close() {
 	w.stop <- true
 	<-w.stop
 	close(w.rec)
+}
+
+// SetReportType 设置上报类型
+func (w *ConsoleLogWriter) SetReportType(tp uint8) {
+	w.rptype = tp
+}
+
+// GetReportType 获取上报类型
+func (w *ConsoleLogWriter) GetReportType() uint8 {
+	return w.rptype
 }
 
 // xmlToConsoleLogWriter xml创建控制台日志输出

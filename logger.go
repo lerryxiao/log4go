@@ -2,7 +2,6 @@ package log4go
 
 import (
 	"fmt"
-	"os"
 	"runtime"
 	"strings"
 	"time"
@@ -20,11 +19,9 @@ func (l level) String() string {
 
 // SetExtend 设置扩展
 func (record LogRecord) SetExtend(tp uint8, data []interface{}) {
-	record.Extend = make([]interface{}, len(data)+1)
+	record.Extend = make([]interface{}, 1, len(data)+1)
 	record.Extend[0] = tp
-	for index, info := range data {
-		record.Extend[index+1] = info
-	}
+	record.Extend = append(record.Extend, data...)
 }
 
 // GetExtend 获取扩展
@@ -59,8 +56,8 @@ func (log Logger) Close() {
 }
 
 // AddFilter 增加过滤器
-func (log Logger) AddFilter(tag string, lvl level, writer LogWriter) Logger {
-	log[tag] = &Filter{lvl, writer}
+func (log Logger) AddFilter(tag string, writer LogWriter, lvl level) Logger {
+	log[tag] = &Filter{writer, lvl}
 	return log
 }
 
@@ -74,11 +71,27 @@ func (log Logger) checkSkip(lvl level) bool {
 	return true
 }
 
+// checkReport 上报
+func (log Logger) checkReport(rptp uint8) bool {
+	if rptp <= 0 {
+		return true
+	}
+	for _, filt := range log {
+		if filt != nil && rptp == filt.GetReportType() {
+			return true
+		}
+	}
+	return false
+}
+
 // dispatchLog 分发日志
-func (log Logger) dispatchLog(rec *LogRecord) {
+func (log Logger) dispatchLog(rec *LogRecord, rptp uint8) {
 	if rec != nil {
 		for _, filt := range log {
 			if filt != nil && rec.Level >= filt.Level {
+				if rptp > 0 && rptp != filt.GetReportType() {
+					continue
+				}
 				filt.LogWrite(rec)
 			}
 		}
@@ -96,52 +109,32 @@ func getRunCaller(skip int) string {
 
 // Send a formatted log message internally
 func (log Logger) intLogf(skip int, lvl level, format string, args ...interface{}) {
-
 	if log.checkSkip(lvl) == true {
 		return
 	}
-
 	msg := format
 	if len(args) > 0 {
 		msg = fmt.Sprintf(format, args...)
 	}
-
 	log.dispatchLog(&LogRecord{
 		Level:   lvl,
 		Created: time.Now(),
 		Source:  getRunCaller(skip + 1),
 		Message: msg,
-	})
-}
-
-// Send a closure log message internally
-func (log Logger) intLogc(skip int, lvl level, closure func() string) {
-
-	if log.checkSkip(lvl) == true {
-		return
-	}
-
-	log.dispatchLog(&LogRecord{
-		Level:   lvl,
-		Created: time.Now(),
-		Source:  getRunCaller(skip + 1),
-		Message: closure(),
-	})
+	}, 0)
 }
 
 // Log Send a log message with manual level, source, and message.
 func (log Logger) Log(lvl level, source, message string) {
-
 	if log.checkSkip(lvl) == true {
 		return
 	}
-
 	log.dispatchLog(&LogRecord{
 		Level:   lvl,
 		Created: time.Now(),
 		Source:  source,
 		Message: message,
-	})
+	}, 0)
 }
 
 // Logf format 日志输出
@@ -149,119 +142,107 @@ func (log Logger) Logf(lvl level, format string, args ...interface{}) {
 	log.intLogf(1, lvl, format, args...)
 }
 
-// Logc closure 日志输出
-func (log Logger) Logc(lvl level, closure func() string) {
-	log.intLogc(1, lvl, closure)
+// LogReport 上报
+func (log Logger) LogReport(skip int, rptp, extp uint8, exdt ...interface{}) {
+	if log.checkSkip(REPORT) == true || log.checkReport(rptp) == false {
+		return
+	}
+	record := &LogRecord{
+		Level:   REPORT,
+		Created: time.Now(),
+		Source:  getRunCaller(skip + 1),
+	}
+	if extp > 0 {
+		record.SetExtend(extp, exdt)
+	} else if len(exdt) > 0 {
+		record.Message = exdt[0].(string)
+	}
+	log.dispatchLog(record, rptp)
 }
 
-// LogReport 上报
-func (log Logger) LogReport(skip int, lvl level, url string, header interface{}, body string) {
-
-	if log.checkSkip(lvl) == true {
-		return
+func getArg(arg0 interface{}, larg int) string {
+	var msg string
+	switch first := arg0.(type) {
+	case string:
+		msg = first
+	case func() string:
+		msg = first()
+	default:
+		msg = fmt.Sprint(arg0) + strings.Repeat(" %v", larg)
 	}
-
-	nurl := len(url) <= 0
-	nhead := header == nil
-	nbody := len(body) <= 0
-
-	var extend []interface{}
-	if nurl == false && nhead == false && nbody == false {
-		extend = []interface{}{
-			EXUrlHeadBody,
-			url,
-			header,
-			body,
-		}
-	} else if nurl == false && nhead == false {
-		extend = []interface{}{
-			EXUrlHead,
-			url,
-			header,
-		}
-	} else if nurl == false && nbody == false {
-		extend = []interface{}{
-			EXUrlBody,
-			url,
-			body,
-		}
-	} else if nurl == false {
-		extend = []interface{}{
-			EXUrl,
-			url,
-		}
-	} else {
-		fmt.Fprintf(os.Stderr, "LogReport extend is nil, url: %s", url)
-		return
-	}
-
-	log.dispatchLog(&LogRecord{
-		Level:   lvl,
-		Created: time.Now(),
-		Extend:  extend,
-		Source:  getRunCaller(skip + 1),
-	})
+	return msg
 }
 
 // LogCmm 日志输出处理
 func (log Logger) LogCmm(lvl level, arg0 interface{}, args ...interface{}) {
-	switch first := arg0.(type) {
-	case string:
-		log.intLogf(2, lvl, first, args...)
-	case func() string:
-		log.intLogc(2, lvl, first)
-	default:
-		log.intLogf(2, lvl, fmt.Sprint(arg0)+strings.Repeat(" %v", len(args)), args...)
-	}
-
+	log.Logf(lvl, getArg(arg0, len(args)), args...)
 }
 
-// Finest logs
+// Finest 最好log
 func (log Logger) Finest(arg0 interface{}, args ...interface{}) {
 	log.LogCmm(FINEST, arg0, args...)
 }
 
-// Fine logs
+// Fine 好log
 func (log Logger) Fine(arg0 interface{}, args ...interface{}) {
 	log.LogCmm(FINE, arg0, args...)
 }
 
-// Debug logs
+// Debug 调试log
 func (log Logger) Debug(arg0 interface{}, args ...interface{}) {
 	log.LogCmm(DEBUG, arg0, args...)
 }
 
-// Trace logs
+// Trace 追踪log
 func (log Logger) Trace(arg0 interface{}, args ...interface{}) {
 	log.LogCmm(TRACE, arg0, args...)
 }
 
-// Info logs
+// Info 信息log
 func (log Logger) Info(arg0 interface{}, args ...interface{}) {
 	log.LogCmm(INFO, arg0, args...)
 }
 
-// Warn logs
+// Warn 警告log
 func (log Logger) Warn(arg0 interface{}, args ...interface{}) {
 	log.LogCmm(WARNING, arg0, args...)
 }
 
-// Error logs
+// Error 错误log
 func (log Logger) Error(arg0 interface{}, args ...interface{}) {
 	log.LogCmm(ERROR, arg0, args...)
 }
 
-// Fatal logs
+// Fatal 致命log
 func (log Logger) Fatal(arg0 interface{}, args ...interface{}) {
 	log.LogCmm(FATAL, arg0, args...)
 }
 
-// Report logs
-func (log Logger) Report(arg0 interface{}, args ...interface{}) {
-	log.LogCmm(REPORT, arg0, args...)
+// Report 上报log
+func (log Logger) Report(rptp uint8, arg0 interface{}, args ...interface{}) {
+	msg := getArg(arg0, len(args))
+	if len(args) > 0 {
+		msg = fmt.Sprintf(msg, args...)
+	}
+	log.LogReport(1, rptp, 0, msg)
 }
 
-// ReportAPI Report Log by url
-func (log Logger) ReportAPI(url string, header interface{}, body string) {
-	log.LogReport(1, REPORT, url, header, body)
+// Flume flume上报
+func (log Logger) Flume(arg0 interface{}, args ...interface{}) {
+	log.Report(FLUME, arg0, args...)
+}
+
+// FlumeAPI flume api上报
+func (log Logger) FlumeAPI(url string, header interface{}, body interface{}) {
+	log.LogReport(1, FLUME, EXUrlHeadBody, url, header, body)
+}
+
+// Cat cat上报
+func (log Logger) Cat(arg0 interface{}, args ...interface{}) {
+	log.Report(CAT, arg0, args...)
+}
+
+// Prom prometheus上报
+func (log Logger) Prom(arg0 interface{}, args ...interface{}) {
+	log.Report(PROM, arg0, args...)
 }

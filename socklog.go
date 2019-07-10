@@ -10,8 +10,9 @@ import (
 
 // SocketLogWriter This log writer sends output to a socket
 type SocketLogWriter struct {
-	rec  chan *LogRecord
-	stop chan bool
+	rec    chan *LogRecord
+	stop   chan bool
+	rptype uint8
 }
 
 // LogWrite This is the SocketLogWriter's output method
@@ -24,6 +25,16 @@ func (w *SocketLogWriter) Close() {
 	w.stop <- true
 	<-w.stop
 	close(w.rec)
+}
+
+// SetReportType 设置上报类型
+func (w *SocketLogWriter) SetReportType(tp uint8) {
+	w.rptype = tp
+}
+
+// GetReportType 获取上报类型
+func (w *SocketLogWriter) GetReportType() uint8 {
+	return w.rptype
 }
 
 // NewSocketLogWriter 新建socket log writer

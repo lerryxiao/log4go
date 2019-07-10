@@ -3,6 +3,7 @@ package log4go
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math/rand"
 	"net/http"
@@ -10,6 +11,11 @@ import (
 	"strconv"
 	"strings"
 	"time"
+)
+
+// 错误定义
+var (
+	ErrURLNil = errors.New("http logger url is nil")
 )
 
 // RequestLogger struct
@@ -21,7 +27,7 @@ type RequestLogger struct {
 }
 
 // FlumeData 存储数据结构
-type FlumeData map[string]interface{}
+type FlumeData = map[string]interface{}
 
 func (logger *RequestLogger) transRequest(writer *HTTPLogWriter) (*http.Request, error) {
 	if writer != nil {
@@ -41,29 +47,49 @@ func (logger *RequestLogger) transRequest(writer *HTTPLogWriter) (*http.Request,
 				}
 			}
 		}
-		if headers != nil {
-			(*headers)["datetime"] = logger.datetime
+		var (
+			data []byte
+			err  error
+		)
+		if writer.rptype == FLUME {
+			if headers != nil {
+				(*headers)["datetime"] = logger.datetime
+			}
+			data, err = json.Marshal([]FlumeData{
+				FlumeData{
+					"headers": headers,
+					"body":    logger.body,
+				},
+			})
+		} else {
+			data = []byte(logger.body)
 		}
-		data, err := json.Marshal([]FlumeData{
-			FlumeData{
-				"headers": headers,
-				"body":    logger.body,
-			},
-		})
 		if err != nil {
 			return nil, err
 		}
 		buffer := new(bytes.Buffer)
 		buffer.Write(data)
-		url := writer.url
-		if len(logger.url) > 0 {
-			url = logger.url
+		url := logger.url
+		if len(url) <= 0 {
+			url = writer.url
+		}
+		if len(url) <= 0 {
+			fmt.Fprintf(os.Stderr, "http logger url is nil %v", err)
+			return nil, ErrURLNil
 		}
 		req, err := http.NewRequest("POST", url, buffer)
 		if err != nil {
 			return nil, err
 		}
-		req.Header.Set("Content-Type", "application/json;charset=utf-8")
+		if writer.rptype == FLUME {
+			req.Header.Set("Content-Type", "application/json;charset=utf-8")
+		} else {
+			if headers != nil {
+				for key, val := range *headers {
+					req.Header.Add(key, fmt.Sprint(val))
+				}
+			}
+		}
 		return req, nil
 	}
 	return nil, nil
@@ -71,9 +97,9 @@ func (logger *RequestLogger) transRequest(writer *HTTPLogWriter) (*http.Request,
 
 // LoggerProc log proc struct
 type LoggerProc struct {
-	loggers chan *RequestLogger //数据缓存
-	stop    chan bool           //结束标志
-	writer  *HTTPLogWriter      //日志输出
+	loggers chan *RequestLogger // 数据缓存
+	stop    chan bool           // 结束标志
+	writer  *HTTPLogWriter      // 日志输出
 }
 
 // NewLoggerProc 创建logger proc方法
@@ -131,11 +157,10 @@ func (proc *LoggerProc) saveLogger(logger *RequestLogger) {
 	client := &http.Client{}
 	client.Timeout = time.Duration(10) * time.Second
 	response, err := client.Do(req)
-	if err != nil {
+	if err != nil || response == nil {
 		fmt.Fprintf(os.Stderr, "save log requst failed, api is %s, err is %v", proc.writer.url, err)
 		return
 	}
-
 	response.Body.Close()
 }
 
@@ -145,6 +170,7 @@ type HTTPLogWriter struct {
 	prand   *rand.Rand             //随机数
 	url     string                 //上报链接
 	headers map[string]interface{} //http headers
+	rptype  uint8
 }
 
 // 常量定义
@@ -208,25 +234,20 @@ func (w *HTTPLogWriter) LogWrite(rec *LogRecord) {
 		}
 		if len(rec.Extend) > 0 {
 			switch etp, edata := rec.GetExtend(); etp {
-			case EXUrl:
-				if len(edata) > 0 {
-					url = edata[0].(string)
-				}
-			case EXUrlHead:
-				if len(edata) > 1 {
-					url = edata[0].(string)
-					header = edata[1]
-				}
-			case EXUrlBody:
-				if len(edata) > 1 {
-					url = edata[0].(string)
-					body = edata[1].(string)
-				}
 			case EXUrlHeadBody:
-				if len(edata) > 2 {
-					url = edata[0].(string)
+				if len(edata) >= 3 {
+					if iter := edata[0]; iter != nil {
+						url = iter.(string)
+					}
 					header = edata[1]
-					body = edata[2].(string)
+					if iter := edata[2]; iter != nil {
+						data, err := json.Marshal(iter)
+						if err != nil {
+							fmt.Fprintf(os.Stderr, "json marshal: %v, error: %v", iter, err)
+						} else {
+							body = string(data)
+						}
+					}
 				}
 			}
 		}
@@ -257,11 +278,23 @@ func (w *HTTPLogWriter) Close() {
 	}
 }
 
+// SetReportType 设置上报类型
+func (w *HTTPLogWriter) SetReportType(tp uint8) {
+	w.rptype = tp
+}
+
+// GetReportType 获取上报类型
+func (w *HTTPLogWriter) GetReportType() uint8 {
+	return w.rptype
+}
+
 // xmlToHTTPLogWriter xml创建http日志输出
 func xmlToHTTPLogWriter(filename string, props []xmlProperty) (*HTTPLogWriter, bool) {
-	url := ""
-	headers := make(map[string]interface{})
-	procnum := 0
+	var (
+		url     string
+		headers = make(map[string]interface{})
+		procnum int
+	)
 
 	// Parse properties
 	for _, prop := range props {
