@@ -265,8 +265,3 @@ func (log Logger) CatMetricCount(name string, count ...int) {
 func (log Logger) CatMetricDuration(name string, duration int64) {
 	log.LogReport(1, CAT, EXCatMetricDuration, name, duration)
 }
-
-// Prom prometheus上报
-func (log Logger) Prom(arg0 interface{}, args ...interface{}) {
-	log.Report(PROM, arg0, args...)
-}

@@ -35,7 +35,6 @@ const (
 	_     uint8 = iota
 	FLUME  // flume上报
 	CAT    // cat追踪
-	PROM   // prometheus追踪
 	MAX
 )
 

@@ -56,8 +56,6 @@ func getReportType(rptp string) uint8 {
 		return FLUME
 	case "CAT", "cat":
 		return CAT
-	case "PROM", "prom", "PROMETHEUS", "prometheus":
-		return PROM
 	default:
 		return 0
 	}
