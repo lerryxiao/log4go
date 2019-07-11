@@ -164,7 +164,7 @@ func (log Logger) getArg(arg0 interface{}, larg int) string {
 	var msg string
 	switch first := arg0.(type) {
 	case string:
-		msg = arg0.(string)
+		msg = first
 	case func() string:
 		msg = first()
 	default:

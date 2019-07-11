@@ -7,6 +7,7 @@ import (
 	"github.com/jslyzt/gocat/gcat"
 	"github.com/spf13/cast"
 	"github.com/jslyzt/gocat/ccat"
+	"reflect"
 )
 
 ////////////////////////////////////////////////////////////////////////////////////////////
@@ -124,18 +125,18 @@ func NewCatLogWriter(domain, group string) *CatLogWriter {
 	return w
 }
 
-func (w *CatLogWriter) getName(val interface{}) string {
-	if val == nil {
+func (w *CatLogWriter) getName(v interface{}) string {
+	if v == nil {
 		return ""
 	}
-	switch vtp := val.(type) {
+	switch vl := v.(type) {
 	case string:
-		return val.(string)
+		return vl
 	case func() string:
-		return vtp()
+		return vl()
 	case map[interface{}]interface{}:
 		name := ""
-		for k, v := range val.(map[interface{}]interface{}) {
+		for k, v := range vl {
 			name = name + cast.ToString(k) + ":" + cast.ToString(v) + "_"
 		}
 		if len(name) > 0 {
@@ -144,7 +145,7 @@ func (w *CatLogWriter) getName(val interface{}) string {
 		return name
 	case []interface{}:
 		name := ""
-		for _, v := range val.([]interface{}) {
+		for _, v := range vl {
 			name = name + cast.ToString(v) + "_"
 		}
 		if len(name) > 0 {
@@ -152,55 +153,53 @@ func (w *CatLogWriter) getName(val interface{}) string {
 		}
 		return name
 	default:
-		fmt.Fprintf(os.Stderr, "unsupport name type: %v, value: %v", vtp, val)
+		fmt.Fprintf(os.Stderr, "unsupport name type: %v, value: %v", reflect.TypeOf(v), v)
 	}
 	return ""
 }
 
-func (w *CatLogWriter) addMsgData(m *ccat.Message, val interface{}) {
-	if m != nil && val != nil {
-		switch vtp := val.(type) {
+func (w *CatLogWriter) addMsgData(m *ccat.Message, v interface{}) {
+	if m != nil && v != nil {
+		switch vl := v.(type) {
 		case map[string]interface{}:
 			{
-				for key, val := range val.(map[string]interface{}) {
+				for key, val := range vl {
 					m.AddData(key, cast.ToString(val))
 				}
 			}
 		case []interface{}:
 			{
-				varr := val.([]interface{})
-				if len(varr)%2 == 0 {
-					for i := 0; i < len(varr)-1; i = i + 2 {
-						m.AddData(cast.ToString(varr[i]), cast.ToString(varr[i+1]))
+				if len(vl)%2 == 0 {
+					for i := 0; i < len(vl)-1; i = i + 2 {
+						m.AddData(cast.ToString(vl[i]), cast.ToString(vl[i+1]))
 					}
 				} else {
-					for id, val := range varr {
+					for id, val := range vl {
 						m.AddData(cast.ToString(id), cast.ToString(val))
 					}
 				}
 			}
 		default:
-			fmt.Fprintf(os.Stderr, "unsupport addMsgData type: %v, value: %v", vtp, val)
+			fmt.Fprintf(os.Stderr, "unsupport addMsgData type: %v, value: %v", reflect.TypeOf(v), v)
 		}
 	}
 }
 
-func (w *CatLogWriter) setMsgStatus(m *ccat.Message, val interface{}) {
-	if m != nil && val != nil {
-		switch vtp := val.(type) {
+func (w *CatLogWriter) setMsgStatus(m *ccat.Message, v interface{}) {
+	if m != nil && v != nil {
+		switch vl := v.(type) {
 		case string:
 			{
-				val := val.(string)
-				if val == "ok" || val == "OK" {
+				if vl == "ok" || vl == "OK" {
 					m.SetStatus(gcat.SUCCESS)
 				} else {
 					m.SetStatus(gcat.FAIL)
-					m.AddData("err", val)
+					m.AddData("err", vl)
 				}
 			}
 		case int, uint, int8, uint8, int16, uint16, int32, uint32, int64, uint64:
 			{
-				val := cast.ToInt(val)
+				val := cast.ToInt(v)
 				if val > 0 {
 					m.SetStatus(gcat.SUCCESS)
 				} else {
@@ -210,15 +209,14 @@ func (w *CatLogWriter) setMsgStatus(m *ccat.Message, val interface{}) {
 			}
 		case bool:
 			{
-				val := cast.ToBool(val)
-				if val == true {
+				if vl == true {
 					m.SetStatus(gcat.SUCCESS)
 				} else {
 					m.SetStatus(gcat.FAIL)
 				}
 			}
 		default:
-			fmt.Fprintf(os.Stderr, "unsupport setMsgStatus type: %v, value: %v", vtp, val)
+			fmt.Fprintf(os.Stderr, "unsupport setMsgStatus type: %v, value: %v", reflect.TypeOf(v), v)
 		}
 	}
 }
