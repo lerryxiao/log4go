@@ -30,7 +30,7 @@
   <filter enabled="true">
     <tag>reportlog</tag>
     <type>http</type>
-    <level>DEBUG</level>
+    <level>REPORT</level>
     <report>flume</report>
     <property name="url">http://127.0.0.1:8080/report</property>
     <property name="header">appKey:IsD3UJ4Xgl;from:sdk;</property>
@@ -39,9 +39,9 @@
   <filter enabled="true">
     <tag>catlog</tag>
     <type>cat</type>
-    <level>DEBUG</level>
+    <level>REPORT</level>
     <report>cat</report>
-    <property name="url">http://127.0.0.1:8080/report</property>
-    <property name="header">appKey:IsD3UJ4Xgl;from:sdk;</property>
+    <property name="domain">http://127.0.0.1:8080/report</property>
+    <property name="group">appKey:IsD3UJ4Xgl;from:sdk;</property>
   </filter>
 </logging>

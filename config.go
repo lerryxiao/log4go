@@ -136,6 +136,8 @@ func (log Logger) LoadConfiguration(filename string) {
 			filt, good = xmlToSocketLogWriter(filename, xmlfilt.Property)
 		case "http":
 			filt, good = xmlToHTTPLogWriter(filename, xmlfilt.Property)
+		case "cat":
+			filt, good = xmlToCatLogWriter(filename, xmlfilt.Property)
 		default:
 			fmt.Fprintf(os.Stderr, "LoadConfiguration: Error: Could not load XML configuration in %s: unknown filter type \"%s\"\n", filename, xmlfilt.Type)
 			os.Exit(1)

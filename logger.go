@@ -160,11 +160,11 @@ func (log Logger) LogReport(skip int, rptp, extp uint8, exdt ...interface{}) {
 	log.dispatchLog(record, rptp)
 }
 
-func getArg(arg0 interface{}, larg int) string {
+func (log Logger) getArg(arg0 interface{}, larg int) string {
 	var msg string
 	switch first := arg0.(type) {
 	case string:
-		msg = first
+		msg = arg0.(string)
 	case func() string:
 		msg = first()
 	default:
@@ -175,7 +175,7 @@ func getArg(arg0 interface{}, larg int) string {
 
 // LogCmm 日志输出处理
 func (log Logger) LogCmm(lvl level, arg0 interface{}, args ...interface{}) {
-	log.Logf(lvl, getArg(arg0, len(args)), args...)
+	log.Logf(lvl, log.getArg(arg0, len(args)), args...)
 }
 
 // Finest 最好log
@@ -220,7 +220,7 @@ func (log Logger) Fatal(arg0 interface{}, args ...interface{}) {
 
 // Report 上报log
 func (log Logger) Report(rptp uint8, arg0 interface{}, args ...interface{}) {
-	msg := getArg(arg0, len(args))
+	msg := log.getArg(arg0, len(args))
 	if len(args) > 0 {
 		msg = fmt.Sprintf(msg, args...)
 	}
@@ -237,9 +237,33 @@ func (log Logger) FlumeAPI(url string, header interface{}, body interface{}) {
 	log.LogReport(1, FLUME, EXUrlHeadBody, url, header, body)
 }
 
-// Cat cat上报
-func (log Logger) Cat(arg0 interface{}, args ...interface{}) {
-	log.Report(CAT, arg0, args...)
+// CatTransaction cat transaction支持
+func (log Logger) CatTransaction(name string, status interface{}, data interface{}) {
+	log.LogReport(1, CAT, EXCatTransaction, name, status, data)
+}
+
+// CatEvent cat event支持
+func (log Logger) CatEvent(name string, status interface{}, data interface{}) {
+	log.LogReport(1, CAT, EXCatEvent, name, status, data)
+}
+
+// CatError cat error支持
+func (log Logger) CatError(name string, err interface{}) {
+	log.LogReport(1, CAT, EXCatError, name, err)
+}
+
+// CatMetricCount cat metric count支持
+func (log Logger) CatMetricCount(name string, count ...int) {
+	if len(count) <= 0 {
+		log.LogReport(1, CAT, EXCatMetricCount, name)
+	} else {
+		log.LogReport(1, CAT, EXCatMetricCount, name, count[0])
+	}
+}
+
+// CatMetricDuration cat metric duration支持
+func (log Logger) CatMetricDuration(name string, duration int64) {
+	log.LogReport(1, CAT, EXCatMetricDuration, name, duration)
 }
 
 // Prom prometheus上报

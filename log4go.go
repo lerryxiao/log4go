@@ -42,7 +42,12 @@ const (
 // 扩展定义
 const (
 	EXNone        uint8 = iota
-	EXUrlHeadBody
+	EXUrlHeadBody		// url header body 上报
+	EXCatTransaction	// cat事务
+	EXCatEvent			// cat事件
+	EXCatError			// cat错误
+	EXCatMetricCount	// cat调用次数
+	EXCatMetricDuration // cat调用时间
 )
 
 // Logging level strings

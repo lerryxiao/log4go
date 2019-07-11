@@ -1,1 +1,7 @@
 /.idea
+LICENSE
+NOTICE
+*.md
+go.mod
+go.sum
+PATENTS

@@ -95,16 +95,16 @@ func (logger *RequestLogger) transRequest(writer *HTTPLogWriter) (*http.Request,
 	return nil, nil
 }
 
-// LoggerProc log proc struct
-type LoggerProc struct {
+// HttpLoggerProc log proc struct
+type HttpLoggerProc struct {
 	loggers chan *RequestLogger // 数据缓存
 	stop    chan bool           // 结束标志
 	writer  *HTTPLogWriter      // 日志输出
 }
 
-// NewLoggerProc 创建logger proc方法
-func NewLoggerProc(writer *HTTPLogWriter, bufferSize int) *LoggerProc {
-	proc := &LoggerProc{
+// NewHttpLoggerProc 创建logger proc方法
+func NewHttpLoggerProc(writer *HTTPLogWriter, bufferSize int) *HttpLoggerProc {
+	proc := &HttpLoggerProc{
 		loggers: make(chan *RequestLogger, bufferSize),
 		stop:    make(chan bool),
 	}
@@ -112,8 +112,8 @@ func NewLoggerProc(writer *HTTPLogWriter, bufferSize int) *LoggerProc {
 	return proc
 }
 
-//启动日志协程
-func (proc *LoggerProc) startLogger() {
+// 启动日志协程
+func (proc *HttpLoggerProc) startLogger() {
 	defer func() {
 		proc.stop <- true
 	}()
@@ -135,15 +135,15 @@ func (proc *LoggerProc) startLogger() {
 EXIT:
 }
 
-//停止日志协程
-func (proc *LoggerProc) stopLogger() {
+// 停止日志协程
+func (proc *HttpLoggerProc) stopLogger() {
 	proc.stop <- true
 	<-proc.stop
 	close(proc.loggers)
 }
 
-//处理日志
-func (proc *LoggerProc) saveLogger(logger *RequestLogger) {
+// 处理日志
+func (proc *HttpLoggerProc) saveLogger(logger *RequestLogger) {
 	if logger == nil || proc == nil {
 		return
 	}
@@ -166,17 +166,17 @@ func (proc *LoggerProc) saveLogger(logger *RequestLogger) {
 
 // HTTPLogWriter This log writer sends output to a http server
 type HTTPLogWriter struct {
-	procs   []*LoggerProc          //协程数组
-	prand   *rand.Rand             //随机数
-	url     string                 //上报链接
-	headers map[string]interface{} //http headers
+	procs   []*HttpLoggerProc          // 协程数组
+	prand   *rand.Rand             // 随机数
+	url     string                 // 上报链接
+	headers map[string]interface{} // http headers
 	rptype  uint8
 }
 
 // 常量定义
 const (
-	LoggerProcCnt   = 2                           //默认处理日志的协程个数
-	TimeFormateUnix = "2006-01-02T15:04:05+08:00" //unix format
+	LoggerProcCnt   = 2                           // 默认处理日志的协程个数
+	TimeFormateUnix = "2006-01-02T15:04:05+08:00" // unix format
 )
 
 // NewHTTPLogWriter 创建http writer
@@ -186,14 +186,14 @@ func NewHTTPLogWriter(url string, header map[string]interface{}, procSize int) *
 	}
 
 	w := &HTTPLogWriter{
-		procs:   make([]*LoggerProc, procSize),
+		procs:   make([]*HttpLoggerProc, procSize),
 		prand:   rand.New(rand.NewSource(time.Now().UnixNano())),
 		url:     url,
 		headers: header,
 	}
 
 	for i := 0; i < procSize; i++ {
-		w.procs[i] = NewLoggerProc(w, LogBufferLength)
+		w.procs[i] = NewHttpLoggerProc(w, LogBufferLength)
 	}
 
 	for _, proc := range w.procs {
@@ -265,7 +265,6 @@ func (w *HTTPLogWriter) LogWrite(rec *LogRecord) {
 			}
 		}
 	}
-
 }
 
 // Close 关闭
