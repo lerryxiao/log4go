@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
 	"github.com/lerryxiao/log4go/log/define"
 )
 
@@ -226,7 +227,7 @@ func (w *HTTPLogWriter) GetHeaders() map[string]interface{} {
 }
 
 // LogWrite This is the SocketLogWriter's output method
-func (w *HTTPLogWriter) LogWrite(rec *LogRecord) {
+func (w *HTTPLogWriter) LogWrite(rec *Record) {
 	if rec != nil {
 		url, body := "", ""
 		var header interface{}
@@ -289,7 +290,7 @@ func (w *HTTPLogWriter) GetReportType() uint8 {
 }
 
 // XMLToHTTPLogWriter xml创建http日志输出
-func XMLToHTTPLogWriter(filename string, props []define.XMLProperty) (LogWriter, bool) {
+func XMLToHTTPLogWriter(filename string, props []define.XMLProperty) (Writer, bool) {
 	var (
 		url     string
 		headers = make(map[string]interface{})

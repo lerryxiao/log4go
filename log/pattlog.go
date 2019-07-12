@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+
 	"github.com/lerryxiao/log4go/log/define"
 )
 
@@ -39,7 +40,7 @@ var (
 // add by format by lerry 2015-06-30
 // %P - PROCESS ID
 // %R - thread ID
-func FormatLogRecord(format string, rec *LogRecord) string {
+func FormatLogRecord(format string, rec *Record) string {
 	if rec == nil {
 		return "<nil>"
 	}
@@ -110,14 +111,14 @@ func FormatLogRecord(format string, rec *LogRecord) string {
 
 // FormatLogWriter This is the standard writer that prints to standard output.
 type FormatLogWriter struct {
-	rec  chan *LogRecord
+	rec  chan *Record
 	stop chan bool
 }
 
 // NewFormatLogWriter This creates a new FormatLogWriter
 func NewFormatLogWriter(out io.Writer, format string) *FormatLogWriter {
 	w := &FormatLogWriter{
-		rec:  make(chan *LogRecord, define.LogBufferLength),
+		rec:  make(chan *Record, define.LogBufferLength),
 		stop: make(chan bool),
 	}
 
@@ -147,7 +148,7 @@ func NewFormatLogWriter(out io.Writer, format string) *FormatLogWriter {
 }
 
 // LogWrite This is the FormatLogWriter's output method.  This will block if the output buffer is full.
-func (w *FormatLogWriter) LogWrite(rec *LogRecord) {
+func (w *FormatLogWriter) LogWrite(rec *Record) {
 	w.rec <- rec
 }
 

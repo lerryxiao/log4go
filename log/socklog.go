@@ -6,18 +6,19 @@ import (
 	"net"
 	"os"
 	"strings"
+
 	"github.com/lerryxiao/log4go/log/define"
 )
 
 // SocketLogWriter This log writer sends output to a socket
 type SocketLogWriter struct {
-	rec    chan *LogRecord
+	rec    chan *Record
 	stop   chan bool
 	rptype uint8
 }
 
 // LogWrite This is the SocketLogWriter's output method
-func (w *SocketLogWriter) LogWrite(rec *LogRecord) {
+func (w *SocketLogWriter) LogWrite(rec *Record) {
 	w.rec <- rec
 }
 
@@ -47,7 +48,7 @@ func NewSocketLogWriter(proto, hostport string) *SocketLogWriter {
 	}
 
 	w := &SocketLogWriter{
-		rec:  make(chan *LogRecord, define.LogBufferLength),
+		rec:  make(chan *Record, define.LogBufferLength),
 		stop: make(chan bool),
 	}
 
@@ -93,7 +94,7 @@ func NewSocketLogWriter(proto, hostport string) *SocketLogWriter {
 }
 
 // XMLToSocketLogWriter xml创建流日志输出
-func XMLToSocketLogWriter(filename string, props []define.XMLProperty) (LogWriter, bool) {
+func XMLToSocketLogWriter(filename string, props []define.XMLProperty) (Writer, bool) {
 	endpoint := ""
 	protocol := "udp"
 

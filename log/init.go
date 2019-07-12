@@ -4,8 +4,8 @@ import (
 	"github.com/lerryxiao/log4go/log/define"
 )
 
-// LogRecord contains all of the pertinent information for each message
-type LogRecord = define.LogRecord
+// Record contains all of the pertinent information for each message
+type Record = define.LogRecord
 
-// LogWriter 日志输出器
-type LogWriter = define.LogWriter
+// Writer 日志输出器
+type Writer = define.LogWriter

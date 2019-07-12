@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+
 	"github.com/lerryxiao/log4go/log/define"
 )
 
@@ -13,7 +14,7 @@ var (
 
 // ConsoleLogWriter 控制台日志输出
 type ConsoleLogWriter struct {
-	rec    chan *LogRecord
+	rec    chan *Record
 	stop   chan bool
 	rptype uint8
 }
@@ -21,7 +22,7 @@ type ConsoleLogWriter struct {
 // NewConsoleLogWriter 创建控制台日志输出
 func NewConsoleLogWriter() *ConsoleLogWriter {
 	w := &ConsoleLogWriter{
-		rec:  make(chan *LogRecord, define.LogBufferLength),
+		rec:  make(chan *Record, define.LogBufferLength),
 		stop: make(chan bool),
 	}
 	go w.run(stdout)
@@ -61,7 +62,7 @@ EXIT:
 }
 
 // LogWrite 日志输出
-func (w *ConsoleLogWriter) LogWrite(rec *LogRecord) {
+func (w *ConsoleLogWriter) LogWrite(rec *Record) {
 	w.rec <- rec
 }
 
@@ -83,6 +84,6 @@ func (w *ConsoleLogWriter) GetReportType() uint8 {
 }
 
 // XMLToConsoleLogWriter xml创建控制台日志输出
-func XMLToConsoleLogWriter(filename string, props []define.XMLProperty) (LogWriter, bool) {
+func XMLToConsoleLogWriter(filename string, props []define.XMLProperty) (Writer, bool) {
 	return NewConsoleLogWriter(), true
 }

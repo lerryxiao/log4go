@@ -1,13 +1,14 @@
 package log4go
 
 import (
-	"fmt"
-	"github.com/lerryxiao/log4go/log/define"
-	"github.com/lerryxiao/log4go/log"
-	"os"
-	"io/ioutil"
 	"encoding/xml"
+	"fmt"
+	"io/ioutil"
+	"os"
 	"strings"
+
+	"github.com/lerryxiao/log4go/log"
+	"github.com/lerryxiao/log4go/log/define"
 )
 
 ////////////////////////////////////////////////////////////////////////////////////

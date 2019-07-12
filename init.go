@@ -31,10 +31,10 @@ const (
 
 // 函数定义
 var (
-	NewFileLogWriter = log.NewFileLogWriter
-	NewHTTPLogWriter = log.NewHTTPLogWriter
-	NewFormatLogWriter = log.NewFormatLogWriter
-	NewSocketLogWriter = log.NewSocketLogWriter
+	NewFileLogWriter    = log.NewFileLogWriter
+	NewHTTPLogWriter    = log.NewHTTPLogWriter
+	NewFormatLogWriter  = log.NewFormatLogWriter
+	NewSocketLogWriter  = log.NewSocketLogWriter
 	NewConsoleLogWriter = log.NewConsoleLogWriter
 )
 

@@ -12,34 +12,34 @@ const (
 // level 定义
 const (
 	_       uint8 = iota
-	FINEST   // 最好
-	FINE     // 好
-	DEBUG    // 调试
-	TRACE    // 追踪
-	INFO     // 信息
-	WARNING  // 警告
-	ERROR    // 错误
-	FATAL    // 致命错误
-	REPORT   // 上报
+	FINEST        // 最好
+	FINE          // 好
+	DEBUG         // 调试
+	TRACE         // 追踪
+	INFO          // 信息
+	WARNING       // 警告
+	ERROR         // 错误
+	FATAL         // 致命错误
+	REPORT        // 上报
 )
 
 // 上报定义
 const (
 	_     uint8 = iota
-	FLUME  // flume上报
-	CAT    // cat追踪
+	FLUME       // flume上报
+	CAT         // cat追踪
 	MAX
 )
 
 // 扩展定义
 const (
 	EXNone              uint8 = iota
-	EXUrlHeadBody        // url header body 上报
-	EXCatTransaction     // cat事务
-	EXCatEvent           // cat事件
-	EXCatError           // cat错误
-	EXCatMetricCount     // cat调用次数
-	EXCatMetricDuration  // cat调用时间
+	EXUrlHeadBody             // url header body 上报
+	EXCatTransaction          // cat事务
+	EXCatEvent                // cat事件
+	EXCatError                // cat错误
+	EXCatMetricCount          // cat调用次数
+	EXCatMetricDuration       // cat调用时间
 )
 
 // Logging level strings

@@ -8,8 +8,8 @@ import (
 
 	"github.com/jslyzt/gocat/ccat"
 	"github.com/jslyzt/gocat/gcat"
-	"github.com/spf13/cast"
 	"github.com/lerryxiao/log4go/log/define"
+	"github.com/spf13/cast"
 )
 
 ////////////////////////////////////////////////////////////////////////////////////////////
@@ -35,8 +35,8 @@ func initDomain(domain string) {
 
 ////////////////////////////////////////////////////////////////////////////////////////////
 
-// CatLogWriter This log writer sends output to cat
-type CatLogWriter struct {
+// LogWriter This log writer sends output to cat
+type LogWriter struct {
 	rec      chan *define.LogRecord
 	stop     chan bool
 	rptype   uint8
@@ -44,28 +44,28 @@ type CatLogWriter struct {
 }
 
 // LogWrite This is the SocketLogWriter's output method
-func (w *CatLogWriter) LogWrite(rec *define.LogRecord) {
+func (w *LogWriter) LogWrite(rec *define.LogRecord) {
 	w.rec <- rec
 }
 
 // Close 关闭
-func (w *CatLogWriter) Close() {
+func (w *LogWriter) Close() {
 	w.stop <- true
 	<-w.stop
 	close(w.rec)
 }
 
 // SetReportType 设置上报类型
-func (w *CatLogWriter) SetReportType(tp uint8) {
+func (w *LogWriter) SetReportType(tp uint8) {
 	w.rptype = tp
 }
 
 // GetReportType 获取上报类型
-func (w *CatLogWriter) GetReportType() uint8 {
+func (w *LogWriter) GetReportType() uint8 {
 	return w.rptype
 }
 
-func (w *CatLogWriter) getArg(args []interface{}, index int) interface{} {
+func (w *LogWriter) getArg(args []interface{}, index int) interface{} {
 	if index >= len(args) {
 		return nil
 	}
@@ -73,16 +73,16 @@ func (w *CatLogWriter) getArg(args []interface{}, index int) interface{} {
 }
 
 // NewCatLogWriter 新建socket log writer
-func NewCatLogWriter(domain, group string) *CatLogWriter {
+func NewCatLogWriter(domain, group string) *LogWriter {
 	if len(domain) > 0 {
 		initDomain(domain)
 	}
 	if len(catDomain) <= 0 {
-		fmt.Fprintf(os.Stderr, "NewCatLogWriter(%v) domain is nil", domain)
+		fmt.Fprintf(os.Stderr, "NewLogWriter(%v) domain is nil", domain)
 		return nil
 	}
 
-	w := &CatLogWriter{
+	w := &LogWriter{
 		rec:      make(chan *define.LogRecord, define.LogBufferLength),
 		stop:     make(chan bool),
 		rptgroup: group,
@@ -128,7 +128,7 @@ func NewCatLogWriter(domain, group string) *CatLogWriter {
 	return w
 }
 
-func (w *CatLogWriter) getName(v interface{}) string {
+func (w *LogWriter) getName(v interface{}) string {
 	if v == nil {
 		return ""
 	}
@@ -161,7 +161,7 @@ func (w *CatLogWriter) getName(v interface{}) string {
 	return ""
 }
 
-func (w *CatLogWriter) addMsgData(m *ccat.Message, v interface{}) {
+func (w *LogWriter) addMsgData(m *ccat.Message, v interface{}) {
 	if m != nil && v != nil {
 		switch vl := v.(type) {
 		case map[string]interface{}:
@@ -188,7 +188,7 @@ func (w *CatLogWriter) addMsgData(m *ccat.Message, v interface{}) {
 	}
 }
 
-func (w *CatLogWriter) setMsgStatus(m *ccat.Message, v interface{}) {
+func (w *LogWriter) setMsgStatus(m *ccat.Message, v interface{}) {
 	if m != nil && v != nil {
 		switch vl := v.(type) {
 		case string:
@@ -224,7 +224,7 @@ func (w *CatLogWriter) setMsgStatus(m *ccat.Message, v interface{}) {
 	}
 }
 
-func (w *CatLogWriter) dealTransaction(data []interface{}) {
+func (w *LogWriter) dealTransaction(data []interface{}) {
 	dtl := len(data)
 	if dtl > 0 {
 		t := cat.NewTransaction(w.rptgroup, w.getName(w.getArg(data, 0)))
@@ -238,7 +238,7 @@ func (w *CatLogWriter) dealTransaction(data []interface{}) {
 	}
 }
 
-func (w *CatLogWriter) dealEvent(data []interface{}) {
+func (w *LogWriter) dealEvent(data []interface{}) {
 	dtl := len(data)
 	if dtl > 0 {
 		t := cat.NewEvent(w.rptgroup, w.getName(w.getArg(data, 0)))
@@ -252,7 +252,7 @@ func (w *CatLogWriter) dealEvent(data []interface{}) {
 	}
 }
 
-func (w *CatLogWriter) dealError(data []interface{}) {
+func (w *LogWriter) dealError(data []interface{}) {
 	dtl := len(data)
 	if dtl > 0 {
 		var category = w.getName(w.getArg(data, 0))
@@ -270,7 +270,7 @@ func (w *CatLogWriter) dealError(data []interface{}) {
 	}
 }
 
-func (w *CatLogWriter) dealMetricCount(data []interface{}) {
+func (w *LogWriter) dealMetricCount(data []interface{}) {
 	dtl := len(data)
 	if dtl > 0 {
 		if dtl > 1 {
@@ -281,7 +281,7 @@ func (w *CatLogWriter) dealMetricCount(data []interface{}) {
 	}
 }
 
-func (w *CatLogWriter) dealMetricDuration(data []interface{}) {
+func (w *LogWriter) dealMetricDuration(data []interface{}) {
 	dtl := len(data)
 	if dtl > 1 {
 		cat.LogMetricForDuration(w.rptgroup+"_"+w.getName(w.getArg(data, 0)), cast.ToInt64(w.getArg(data, 1)))

@@ -7,12 +7,13 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
 	"github.com/lerryxiao/log4go/log/define"
 )
 
 // FileLogWriter 文件日志输出
 type FileLogWriter struct {
-	rec  chan *LogRecord
+	rec  chan *Record
 	rot  chan bool
 	stop chan bool
 
@@ -47,7 +48,7 @@ type FileLogWriter struct {
 }
 
 // LogWrite 输出方法
-func (w *FileLogWriter) LogWrite(rec *LogRecord) {
+func (w *FileLogWriter) LogWrite(rec *Record) {
 	w.rec <- rec
 }
 
@@ -71,7 +72,7 @@ func (w *FileLogWriter) GetReportType() uint8 {
 // NewFileLogWriter 创建文件输出节点
 func NewFileLogWriter(dir, fname string, rotate bool) *FileLogWriter {
 	w := &FileLogWriter{
-		rec:            make(chan *LogRecord, define.LogBufferLength),
+		rec:            make(chan *Record, define.LogBufferLength),
 		rot:            make(chan bool),
 		stop:           make(chan bool),
 		dir:            dir,
@@ -102,7 +103,7 @@ func NewFileLogWriter(dir, fname string, rotate bool) *FileLogWriter {
 	go func() {
 		defer func() {
 			if w.file != nil {
-				fmt.Fprint(w.file, FormatLogRecord(w.trailer, &LogRecord{Created: time.Now()}))
+				fmt.Fprint(w.file, FormatLogRecord(w.trailer, &Record{Created: time.Now()}))
 				w.file.Close()
 			}
 			w.stop <- true
@@ -164,7 +165,7 @@ func (w *FileLogWriter) Rotate() {
 func (w *FileLogWriter) intRotate() error {
 	// Close any log file that may be open
 	if w.file != nil {
-		fmt.Fprint(w.file, FormatLogRecord(w.trailer, &LogRecord{Created: time.Now()}))
+		fmt.Fprint(w.file, FormatLogRecord(w.trailer, &Record{Created: time.Now()}))
 		w.file.Close()
 	}
 	pieces := bytes.Split([]byte(w.filenameFormat), []byte{'%'})
@@ -213,7 +214,7 @@ func (w *FileLogWriter) intRotate() error {
 	w.file = fd
 
 	now := time.Now()
-	fmt.Fprint(w.file, FormatLogRecord(w.header, &LogRecord{Created: now}))
+	fmt.Fprint(w.file, FormatLogRecord(w.header, &Record{Created: now}))
 
 	// Set the daily open date to the current date
 	w.dailyOpendate = now.Day()
@@ -235,7 +236,7 @@ func (w *FileLogWriter) SetFormat(format string) *FileLogWriter {
 func (w *FileLogWriter) SetHeadFoot(head, foot string) *FileLogWriter {
 	w.header, w.trailer = head, foot
 	if w.maxlinesCurlines == 0 {
-		fmt.Fprint(w.file, FormatLogRecord(w.header, &LogRecord{Created: time.Now()}))
+		fmt.Fprint(w.file, FormatLogRecord(w.header, &Record{Created: time.Now()}))
 	}
 	return w
 }
@@ -289,7 +290,7 @@ func strToNumSuffix(str string, mult int) int {
 }
 
 // XMLToFileLogWriter xml创建文件日志输出
-func XMLToFileLogWriter(filename string, props []define.XMLProperty) (LogWriter, bool) {
+func XMLToFileLogWriter(filename string, props []define.XMLProperty) (Writer, bool) {
 	file := ""
 	format := "[%D %T] [%L] (%S) %M"
 	maxlines := 0
@@ -348,7 +349,7 @@ func NewXMLLogWriter(dir, fname string, rotate bool) *FileLogWriter {
 }
 
 // XMLToXMLLogWriter xml创建xml日志输出
-func XMLToXMLLogWriter(filename string, props []define.XMLProperty) (LogWriter, bool) {
+func XMLToXMLLogWriter(filename string, props []define.XMLProperty) (Writer, bool) {
 	file := ""
 	maxrecords := 0
 	maxsize := 0
