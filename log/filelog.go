@@ -1,4 +1,4 @@
-package log4go
+package log
 
 import (
 	"bytes"
@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"github.com/lerryxiao/log4go/log/define"
 )
 
 // FileLogWriter 文件日志输出
@@ -70,7 +71,7 @@ func (w *FileLogWriter) GetReportType() uint8 {
 // NewFileLogWriter 创建文件输出节点
 func NewFileLogWriter(dir, fname string, rotate bool) *FileLogWriter {
 	w := &FileLogWriter{
-		rec:            make(chan *LogRecord, LogBufferLength),
+		rec:            make(chan *LogRecord, define.LogBufferLength),
 		rot:            make(chan bool),
 		stop:           make(chan bool),
 		dir:            dir,
@@ -287,8 +288,8 @@ func strToNumSuffix(str string, mult int) int {
 	return parsed * num
 }
 
-// xmlToFileLogWriter xml创建文件日志输出
-func xmlToFileLogWriter(filename string, props []xmlProperty) (*FileLogWriter, bool) {
+// XMLToFileLogWriter xml创建文件日志输出
+func XMLToFileLogWriter(filename string, props []define.XMLProperty) (LogWriter, bool) {
 	file := ""
 	format := "[%D %T] [%L] (%S) %M"
 	maxlines := 0
@@ -346,8 +347,8 @@ func NewXMLLogWriter(dir, fname string, rotate bool) *FileLogWriter {
 	</record>`).SetHeadFoot("<log created=\"%D %T\">", "</log>")
 }
 
-// xmlToXMLLogWriter xml创建xml日志输出
-func xmlToXMLLogWriter(filename string, props []xmlProperty) (*FileLogWriter, bool) {
+// XMLToXMLLogWriter xml创建xml日志输出
+func XMLToXMLLogWriter(filename string, props []define.XMLProperty) (LogWriter, bool) {
 	file := ""
 	maxrecords := 0
 	maxsize := 0

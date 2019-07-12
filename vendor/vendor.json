@@ -39,16 +39,16 @@
 			"revisionTime": "2019-04-09T05:09:43Z"
 		},
 		{
-			"checksumSHA1": "BKNK5i9T/0NoRyJeysEYc93kpRs=",
+			"checksumSHA1": "ND58oekKPZhcKQC3Eu+8jRqUHOY=",
 			"path": "github.com/jslyzt/gocat/ccat",
-			"revision": "ce9de85d239be9cfc9d9e6126f6fb9fbf6e151a4",
-			"revisionTime": "2019-07-11T03:11:05Z"
+			"revision": "7bffd9e4be79f8e7086ffb3b32adac591b62299e",
+			"revisionTime": "2019-07-12T07:58:40Z"
 		},
 		{
 			"checksumSHA1": "HslXqAzRmvMohgJuFfUpEpPHiOU=",
 			"path": "github.com/jslyzt/gocat/gcat",
-			"revision": "ce9de85d239be9cfc9d9e6126f6fb9fbf6e151a4",
-			"revisionTime": "2019-07-11T03:11:05Z"
+			"revision": "7bffd9e4be79f8e7086ffb3b32adac591b62299e",
+			"revisionTime": "2019-07-12T07:58:40Z"
 		},
 		{
 			"checksumSHA1": "TB2vxux9xQbvsTHOVt4aRTuvSn4=",

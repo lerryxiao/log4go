@@ -1,9 +1,10 @@
-package log4go
+package log
 
 import (
 	"fmt"
 	"io"
 	"os"
+	"github.com/lerryxiao/log4go/log/define"
 )
 
 var (
@@ -20,7 +21,7 @@ type ConsoleLogWriter struct {
 // NewConsoleLogWriter 创建控制台日志输出
 func NewConsoleLogWriter() *ConsoleLogWriter {
 	w := &ConsoleLogWriter{
-		rec:  make(chan *LogRecord, LogBufferLength),
+		rec:  make(chan *LogRecord, define.LogBufferLength),
 		stop: make(chan bool),
 	}
 	go w.run(stdout)
@@ -52,7 +53,7 @@ func (w ConsoleLogWriter) run(out io.Writer) {
 				if at := rec.Created.UnixNano() / 1e9; at != timestrAt {
 					timestr, timestrAt = rec.Created.Format("01/02/06 15:04:05"), at
 				}
-				fmt.Fprint(out, "[", timestr, "] [", levelStrings[rec.Level], "] ", rec.Message, "\n")
+				fmt.Fprint(out, "[", timestr, "] [", define.LevelStrings[rec.Level], "] ", rec.Message, "\n")
 			}
 		}
 	}
@@ -81,7 +82,7 @@ func (w *ConsoleLogWriter) GetReportType() uint8 {
 	return w.rptype
 }
 
-// xmlToConsoleLogWriter xml创建控制台日志输出
-func xmlToConsoleLogWriter(filename string, props []xmlProperty) (*ConsoleLogWriter, bool) {
+// XMLToConsoleLogWriter xml创建控制台日志输出
+func XMLToConsoleLogWriter(filename string, props []define.XMLProperty) (LogWriter, bool) {
 	return NewConsoleLogWriter(), true
 }

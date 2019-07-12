@@ -1,4 +1,4 @@
-package log4go
+package define
 
 import (
 	"fmt"
@@ -6,14 +6,6 @@ import (
 	"strings"
 	"time"
 )
-
-// String 字符串输出
-func (l level) String() string {
-	if l < 0 || int(l) > len(levelStrings) {
-		return "UNKNOWN"
-	}
-	return levelStrings[int(l)]
-}
 
 ////////////////////////////////////////////////////////////////////////////////////
 
@@ -40,11 +32,6 @@ func (record LogRecord) GetExtend() (tp uint8, data []interface{}) {
 
 ////////////////////////////////////////////////////////////////////////////////////
 
-// NewLogger 创建
-func NewLogger() Logger {
-	return make(Logger)
-}
-
 // Close 关闭
 func (log Logger) Close() {
 	for key, filt := range log {
@@ -56,13 +43,13 @@ func (log Logger) Close() {
 }
 
 // AddFilter 增加过滤器
-func (log Logger) AddFilter(tag string, writer LogWriter, lvl level) Logger {
+func (log Logger) AddFilter(tag string, writer LogWriter, lvl uint8) Logger {
 	log[tag] = &Filter{writer, lvl}
 	return log
 }
 
 // checkSkip 检查
-func (log Logger) checkSkip(lvl level) bool {
+func (log Logger) checkSkip(lvl uint8) bool {
 	for _, filt := range log {
 		if filt != nil && lvl >= filt.Level {
 			return false
@@ -108,7 +95,7 @@ func getRunCaller(skip int) string {
 }
 
 // Send a formatted log message internally
-func (log Logger) intLogf(skip int, lvl level, format string, args ...interface{}) {
+func (log Logger) intLogf(skip int, lvl uint8, format string, args ...interface{}) {
 	if log.checkSkip(lvl) == true {
 		return
 	}
@@ -125,7 +112,7 @@ func (log Logger) intLogf(skip int, lvl level, format string, args ...interface{
 }
 
 // Log Send a log message with manual level, source, and message.
-func (log Logger) Log(lvl level, source, message string) {
+func (log Logger) Log(lvl uint8, source, message string) {
 	if log.checkSkip(lvl) == true {
 		return
 	}
@@ -138,7 +125,7 @@ func (log Logger) Log(lvl level, source, message string) {
 }
 
 // Logf format 日志输出
-func (log Logger) Logf(lvl level, format string, args ...interface{}) {
+func (log Logger) Logf(lvl uint8, format string, args ...interface{}) {
 	log.intLogf(1, lvl, format, args...)
 }
 
@@ -174,7 +161,7 @@ func (log Logger) getArg(arg0 interface{}, larg int) string {
 }
 
 // LogCmm 日志输出处理
-func (log Logger) LogCmm(lvl level, arg0 interface{}, args ...interface{}) {
+func (log Logger) LogCmm(lvl uint8, arg0 interface{}, args ...interface{}) {
 	log.Logf(lvl, log.getArg(arg0, len(args)), args...)
 }
 

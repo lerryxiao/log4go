@@ -1,10 +1,11 @@
-package log4go
+package log
 
 import (
 	"bytes"
 	"fmt"
 	"io"
 	"os"
+	"github.com/lerryxiao/log4go/log/define"
 )
 
 // 常量定义
@@ -84,7 +85,7 @@ func FormatLogRecord(format string, rec *LogRecord) string {
 			case 'd':
 				out.WriteString(cache.shortDate)
 			case 'L':
-				out.WriteString(levelStrings[rec.Level])
+				out.WriteString(define.LevelStrings[rec.Level])
 			case 'S':
 				out.WriteString(rec.Source)
 			case 'M':
@@ -116,7 +117,7 @@ type FormatLogWriter struct {
 // NewFormatLogWriter This creates a new FormatLogWriter
 func NewFormatLogWriter(out io.Writer, format string) *FormatLogWriter {
 	w := &FormatLogWriter{
-		rec:  make(chan *LogRecord, LogBufferLength),
+		rec:  make(chan *LogRecord, define.LogBufferLength),
 		stop: make(chan bool),
 	}
 

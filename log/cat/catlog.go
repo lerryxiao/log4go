@@ -1,4 +1,4 @@
-package log4go
+package cat
 
 import (
 	"fmt"
@@ -9,13 +9,16 @@ import (
 	"github.com/jslyzt/gocat/ccat"
 	"github.com/jslyzt/gocat/gcat"
 	"github.com/spf13/cast"
+	"github.com/lerryxiao/log4go/log/define"
 )
 
 ////////////////////////////////////////////////////////////////////////////////////////////
 
+// 变量定义
 var (
 	cat       = gcat.Instance()
 	catDomain = ""
+	LogKey    = "cat"
 )
 
 func initDomain(domain string) {
@@ -34,14 +37,14 @@ func initDomain(domain string) {
 
 // CatLogWriter This log writer sends output to cat
 type CatLogWriter struct {
-	rec      chan *LogRecord
+	rec      chan *define.LogRecord
 	stop     chan bool
 	rptype   uint8
 	rptgroup string
 }
 
 // LogWrite This is the SocketLogWriter's output method
-func (w *CatLogWriter) LogWrite(rec *LogRecord) {
+func (w *CatLogWriter) LogWrite(rec *define.LogRecord) {
 	w.rec <- rec
 }
 
@@ -80,7 +83,7 @@ func NewCatLogWriter(domain, group string) *CatLogWriter {
 	}
 
 	w := &CatLogWriter{
-		rec:      make(chan *LogRecord, LogBufferLength),
+		rec:      make(chan *define.LogRecord, define.LogBufferLength),
 		stop:     make(chan bool),
 		rptgroup: group,
 	}
@@ -105,15 +108,15 @@ func NewCatLogWriter(domain, group string) *CatLogWriter {
 					}
 					tp, data := rec.GetExtend()
 					switch tp {
-					case EXCatTransaction:
+					case define.EXCatTransaction:
 						go w.dealTransaction(data)
-					case EXCatEvent:
+					case define.EXCatEvent:
 						go w.dealEvent(data)
-					case EXCatError:
+					case define.EXCatError:
 						go w.dealError(data)
-					case EXCatMetricCount:
+					case define.EXCatMetricCount:
 						go w.dealMetricCount(data)
-					case EXCatMetricDuration:
+					case define.EXCatMetricDuration:
 						go w.dealMetricDuration(data)
 					}
 				}
@@ -287,8 +290,8 @@ func (w *CatLogWriter) dealMetricDuration(data []interface{}) {
 
 ////////////////////////////////////////////////////////////////////////////////////////////
 
-// xmlToCatLogWriter xml创建cat日志输出
-func xmlToCatLogWriter(filename string, props []xmlProperty) (*CatLogWriter, bool) {
+// XMLToCatLogWriter xml创建cat日志输出
+func XMLToCatLogWriter(filename string, props []define.XMLProperty) (define.LogWriter, bool) {
 	var (
 		domain, group string
 	)

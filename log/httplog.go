@@ -1,4 +1,4 @@
-package log4go
+package log
 
 import (
 	"bytes"
@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"github.com/lerryxiao/log4go/log/define"
 )
 
 // 错误定义
@@ -51,7 +52,7 @@ func (logger *RequestLogger) transRequest(writer *HTTPLogWriter) (*http.Request,
 			data []byte
 			err  error
 		)
-		if writer.rptype == FLUME {
+		if writer.rptype == define.FLUME {
 			if headers != nil {
 				(*headers)["datetime"] = logger.datetime
 			}
@@ -81,7 +82,7 @@ func (logger *RequestLogger) transRequest(writer *HTTPLogWriter) (*http.Request,
 		if err != nil {
 			return nil, err
 		}
-		if writer.rptype == FLUME {
+		if writer.rptype == define.FLUME {
 			req.Header.Set("Content-Type", "application/json;charset=utf-8")
 		} else {
 			if headers != nil {
@@ -193,7 +194,7 @@ func NewHTTPLogWriter(url string, header map[string]interface{}, procSize int) *
 	}
 
 	for i := 0; i < procSize; i++ {
-		w.procs[i] = NewHTTPLoggerProc(w, LogBufferLength)
+		w.procs[i] = NewHTTPLoggerProc(w, define.LogBufferLength)
 	}
 
 	for _, proc := range w.procs {
@@ -234,7 +235,7 @@ func (w *HTTPLogWriter) LogWrite(rec *LogRecord) {
 		}
 		if len(rec.Extend) > 0 {
 			switch etp, edata := rec.GetExtend(); etp {
-			case EXUrlHeadBody:
+			case define.EXUrlHeadBody:
 				if len(edata) >= 3 {
 					if iter := edata[0]; iter != nil {
 						url = iter.(string)
@@ -287,8 +288,8 @@ func (w *HTTPLogWriter) GetReportType() uint8 {
 	return w.rptype
 }
 
-// xmlToHTTPLogWriter xml创建http日志输出
-func xmlToHTTPLogWriter(filename string, props []xmlProperty) (*HTTPLogWriter, bool) {
+// XMLToHTTPLogWriter xml创建http日志输出
+func XMLToHTTPLogWriter(filename string, props []define.XMLProperty) (LogWriter, bool) {
 	var (
 		url     string
 		headers = make(map[string]interface{})
