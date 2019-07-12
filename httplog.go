@@ -95,16 +95,16 @@ func (logger *RequestLogger) transRequest(writer *HTTPLogWriter) (*http.Request,
 	return nil, nil
 }
 
-// HttpLoggerProc log proc struct
-type HttpLoggerProc struct {
+// HTTPLoggerProc log proc struct
+type HTTPLoggerProc struct {
 	loggers chan *RequestLogger // 数据缓存
 	stop    chan bool           // 结束标志
 	writer  *HTTPLogWriter      // 日志输出
 }
 
-// NewHttpLoggerProc 创建logger proc方法
-func NewHttpLoggerProc(writer *HTTPLogWriter, bufferSize int) *HttpLoggerProc {
-	proc := &HttpLoggerProc{
+// NewHTTPLoggerProc 创建logger proc方法
+func NewHTTPLoggerProc(writer *HTTPLogWriter, bufferSize int) *HTTPLoggerProc {
+	proc := &HTTPLoggerProc{
 		loggers: make(chan *RequestLogger, bufferSize),
 		stop:    make(chan bool),
 	}
@@ -113,7 +113,7 @@ func NewHttpLoggerProc(writer *HTTPLogWriter, bufferSize int) *HttpLoggerProc {
 }
 
 // 启动日志协程
-func (proc *HttpLoggerProc) startLogger() {
+func (proc *HTTPLoggerProc) startLogger() {
 	defer func() {
 		proc.stop <- true
 	}()
@@ -136,14 +136,14 @@ EXIT:
 }
 
 // 停止日志协程
-func (proc *HttpLoggerProc) stopLogger() {
+func (proc *HTTPLoggerProc) stopLogger() {
 	proc.stop <- true
 	<-proc.stop
 	close(proc.loggers)
 }
 
 // 处理日志
-func (proc *HttpLoggerProc) saveLogger(logger *RequestLogger) {
+func (proc *HTTPLoggerProc) saveLogger(logger *RequestLogger) {
 	if logger == nil || proc == nil {
 		return
 	}
@@ -166,7 +166,7 @@ func (proc *HttpLoggerProc) saveLogger(logger *RequestLogger) {
 
 // HTTPLogWriter This log writer sends output to a http server
 type HTTPLogWriter struct {
-	procs   []*HttpLoggerProc          // 协程数组
+	procs   []*HTTPLoggerProc      // 协程数组
 	prand   *rand.Rand             // 随机数
 	url     string                 // 上报链接
 	headers map[string]interface{} // http headers
@@ -186,14 +186,14 @@ func NewHTTPLogWriter(url string, header map[string]interface{}, procSize int) *
 	}
 
 	w := &HTTPLogWriter{
-		procs:   make([]*HttpLoggerProc, procSize),
+		procs:   make([]*HTTPLoggerProc, procSize),
 		prand:   rand.New(rand.NewSource(time.Now().UnixNano())),
 		url:     url,
 		headers: header,
 	}
 
 	for i := 0; i < procSize; i++ {
-		w.procs[i] = NewHttpLoggerProc(w, LogBufferLength)
+		w.procs[i] = NewHTTPLoggerProc(w, LogBufferLength)
 	}
 
 	for _, proc := range w.procs {

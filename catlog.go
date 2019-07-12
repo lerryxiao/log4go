@@ -3,11 +3,12 @@ package log4go
 import (
 	"fmt"
 	"os"
+	"reflect"
 	"strings"
+
+	"github.com/jslyzt/gocat/ccat"
 	"github.com/jslyzt/gocat/gcat"
 	"github.com/spf13/cast"
-	"github.com/jslyzt/gocat/ccat"
-	"reflect"
 )
 
 ////////////////////////////////////////////////////////////////////////////////////////////
@@ -21,10 +22,9 @@ func initDomain(domain string) {
 	if len(catDomain) > 0 {
 		if len(domain) <= 0 || domain == catDomain {
 			return
-		} else {
-			fmt.Fprintf(os.Stderr, "cat has init domain: %v, should not init: %v", catDomain, domain)
-			return
 		}
+		fmt.Fprintf(os.Stderr, "cat has init domain: %v, should not init: %v", catDomain, domain)
+		return
 	}
 	catDomain = domain
 	gcat.Init(domain, gcat.DefaultConfigForCat2())
