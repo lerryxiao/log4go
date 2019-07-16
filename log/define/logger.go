@@ -129,6 +129,14 @@ func (log Logger) Logf(lvl uint8, format string, args ...interface{}) {
 	log.intLogf(1, lvl, format, args...)
 }
 
+// Logfs format 日志输出
+func (log Logger) Logfs(skip int, lvl uint8, format string, args ...interface{}) {
+	if skip <= 0 {
+		skip = 1
+	}
+	log.intLogf(skip, lvl, format, args...)
+}
+
 // LogReport 上报
 func (log Logger) LogReport(skip int, rptp, extp uint8, exdt ...interface{}) {
 	if log.checkSkip(REPORT) == true || log.checkReport(rptp) == false {
@@ -163,6 +171,11 @@ func (log Logger) getArg(arg0 interface{}, larg int) string {
 // LogCmm 日志输出处理
 func (log Logger) LogCmm(lvl uint8, arg0 interface{}, args ...interface{}) {
 	log.Logf(lvl, log.getArg(arg0, len(args)), args...)
+}
+
+// LogCmms 日志输出处理
+func (log Logger) LogCmms(skip int, lvl uint8, arg0 interface{}, args ...interface{}) {
+	log.Logfs(skip, lvl, log.getArg(arg0, len(args)), args...)
 }
 
 // Finest 最好log
