@@ -44,7 +44,7 @@ const (
 
 // Logging level strings
 var (
-	LevelStrings = []string{"fnst", "fine", "debug", "trace", "info", "warning", "error", "fatal", "report"}
+	LevelStrings = []string{"", "fnst", "fine", "debug", "trace", "info", "warning", "error", "fatal", "report"}
 )
 
 // LogRecord contains all of the pertinent information for each message
