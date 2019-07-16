@@ -220,11 +220,19 @@ func (log Logger) Fatal(arg0 interface{}, args ...interface{}) {
 
 // Report 上报log
 func (log Logger) Report(rptp uint8, arg0 interface{}, args ...interface{}) {
+	log.Reports(2, rptp, arg0, args...)
+}
+
+// Reports 上报log
+func (log Logger) Reports(skip int, rptp uint8, arg0 interface{}, args ...interface{}) {
 	msg := log.getArg(arg0, len(args))
 	if len(args) > 0 {
 		msg = fmt.Sprintf(msg, args...)
 	}
-	log.LogReport(1, rptp, 0, msg)
+	if skip <= 0 {
+		skip = 1
+	}
+	log.LogReport(skip, rptp, 0, msg)
 }
 
 // Flume flume上报
